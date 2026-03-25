@@ -54,6 +54,12 @@ graph TD
 - **Persistent Volumes (FS)** : Garantie de persistance des données DB même en cas de redémarrage des conteneurs.
 - **APIs Externes** : Connecteurs synchrones pour enrichir les dashboards avec des données d'ensoleillement et les prix du marché de l'énergie (EPEX Spot).
 
+#### Flux de Données & Interactions :
+1. **Requêtes Client** : L'utilisateur initie une connexion sécurisée (HTTPS). Le **Load Balancer** intercepte la requête et la transmet au service **API** disponible dans le cluster.
+2. **Traitement & Auth** : L'**API** valide l'identité (JWT). Si l'accès est autorisé, elle interroge la **Base de Données** via des requêtes SQL optimisées.
+3. **Persistance** : Toutes les transactions sont écrites sur des **Volumes Persistants** (FS) pour assurer la durabilité des données.
+4. **Synchronisation Externe** : En arrière-plan, l'API interroge périodiquement des **Services Externes** (Météo/Prix) pour maintenir les dashboards à jour sans intervention utilisateur.
+
 ---
 
 ## 📸 Aperçu de l'Interface (Mockups Réels)
