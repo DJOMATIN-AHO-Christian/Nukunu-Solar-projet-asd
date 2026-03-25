@@ -1,0 +1,244 @@
+/* ════════════════════════════════════════════════════════════
+   NUKUNU SOLAR — DESIGN SYSTEM v2
+   Palette: Amber-Orange · Blue · Green · White on Dark Navy
+════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Background layers ──────────────────── */
+  --bg-base:      #060C14;
+  --bg-surface:   #0D1623;
+  --bg-panel:     #111D2E;
+  --bg-elevated:  #172338;
+  --bg-hover:     #1E2F46;
+  --bg-card:      #13202F;
+
+  /* ── Borders ────────────────────────────── */
+  --border:         rgba(255,255,255,0.06);
+  --border-medium:  rgba(255,255,255,0.10);
+  --border-accent:  rgba(245,158,11,0.30);
+
+  /* ── Text ───────────────────────────────── */
+  --text-primary:   #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted:     #4B6075;
+  --text-inverse:   #060C14;
+
+  /* ── Amber / Yellow-Orange (primary accent) ── */
+  --amber:        #F59E0B;
+  --amber-light:  #FCD34D;
+  --amber-dark:   #D97706;
+  --amber-deep:   #B45309;
+  --amber-bg:     rgba(245,158,11,0.08);
+  --amber-glow:   0 0 24px rgba(245,158,11,0.20);
+
+  /* ── Blue (secondary accent) ──────────────── */
+  --blue:         #3B82F6;
+  --blue-light:   #60A5FA;
+  --blue-dark:    #2563EB;
+  --blue-bg:      rgba(59,130,246,0.08);
+  --blue-glow:    0 0 24px rgba(59,130,246,0.20);
+
+  /* ── Green (success) ──────────────────────── */
+  --green:        #22C55E;
+  --green-light:  #4ADE80;
+  --green-dark:   #16A34A;
+  --green-bg:     rgba(34,197,94,0.08);
+
+  /* ── White ────────────────────────────────── */
+  --white:        #FFFFFF;
+  --white-90:     rgba(255,255,255,0.90);
+  --white-60:     rgba(255,255,255,0.60);
+  --white-10:     rgba(255,255,255,0.10);
+
+  /* ── Status ───────────────────────────────── */
+  --red:          #EF4444;
+  --red-light:    #F87171;
+  --red-bg:       rgba(239,68,68,0.10);
+  --red-border:   rgba(239,68,68,0.30);
+
+  --yellow:       #EAB308;
+  --yellow-bg:    rgba(234,179,8,0.10);
+  --yellow-border:rgba(234,179,8,0.30);
+
+  --purple:       #8B5CF6;
+  --purple-bg:    rgba(139,92,246,0.08);
+
+  --orange:       #F97316;
+  --orange-bg:    rgba(249,115,22,0.08);
+
+  /* ── Profile accent ───────────────────────── */
+  --profile-installateur: var(--blue);
+  --profile-fonds:        var(--purple);
+  --profile-industriel:   var(--amber);
+  --profile-particulier:  var(--green);
+
+  /* ── Typography ───────────────────────────── */
+  --font:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --text-xs:   0.6875rem;   /* 11px */
+  --text-sm:   0.8125rem;   /* 13px */
+  --text-base: 0.9375rem;   /* 15px */
+  --text-lg:   1.0625rem;   /* 17px */
+  --text-xl:   1.25rem;     /* 20px */
+  --text-2xl:  1.5rem;      /* 24px */
+  --text-3xl:  1.875rem;    /* 30px */
+  --text-4xl:  2.5rem;      /* 40px */
+  --text-5xl:  3.25rem;     /* 52px */
+
+  /* ── Spacing ──────────────────────────────── */
+  --sp-1:  0.25rem;
+  --sp-2:  0.5rem;
+  --sp-3:  0.75rem;
+  --sp-4:  1rem;
+  --sp-5:  1.25rem;
+  --sp-6:  1.5rem;
+  --sp-8:  2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
+
+  /* ── Radius ───────────────────────────────── */
+  --r-sm:   6px;
+  --r-base: 10px;
+  --r-md:   14px;
+  --r-lg:   18px;
+  --r-xl:   24px;
+  --r-full: 9999px;
+
+  /* ── Shadows ──────────────────────────────── */
+  --shadow-sm:  0 1px 4px rgba(0,0,0,0.35);
+  --shadow-md:  0 4px 20px rgba(0,0,0,0.45);
+  --shadow-lg:  0 8px 40px rgba(0,0,0,0.55);
+  --shadow-xl:  0 16px 64px rgba(0,0,0,0.65);
+
+  /* ── Layout ───────────────────────────────── */
+  --sidebar-w:        240px;
+  --sidebar-w-collapsed: 64px;
+  --topbar-h:         60px;
+
+  /* ── Transitions ──────────────────────────── */
+  --t:     180ms cubic-bezier(0.4,0,0.2,1);
+  --t-med: 280ms cubic-bezier(0.4,0,0.2,1);
+  --t-slow:420ms cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── Light Theme Overrides ────────────────── */
+:root[data-theme="light"] {
+  --bg-base:      #F1F5F9;
+  --bg-surface:   #FFFFFF;
+  --bg-panel:     #F8FAFC;
+  --bg-elevated:  #E2E8F0;
+  --bg-hover:     #F1F5F9;
+  --bg-card:      #FFFFFF;
+
+  --border:         rgba(0,0,0,0.06);
+  --border-medium:  rgba(0,0,0,0.12);
+  --border-accent:  rgba(245,158,11,0.40);
+
+  --text-primary:   #0F172A;
+  --text-secondary: #475569;
+  --text-muted:     #94A3B8;
+  --text-inverse:   #F1F5F9;
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.1);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,0.12);
+  --shadow-xl:  0 16px 48px rgba(0,0,0,0.16);
+
+  --white-10:   rgba(0,0,0,0.05);
+  --white-60:   rgba(15,23,42,0.60);
+  --white-90:   rgba(15,23,42,0.90);
+
+  /* Adjust glows for light mode */
+  --amber-glow: 0 0 20px rgba(245,158,11,0.15);
+  --blue-glow:  0 0 20px rgba(59,130,246,0.15);
+}
+
+/* ── Profile overrides ────────────────────────────────────── */
+body[data-profile="installateur"] { --accent: var(--blue);   --accent-bg: var(--blue-bg);   --accent-glow: var(--blue-glow); }
+body[data-profile="fonds"]        { --accent: var(--purple); --accent-bg: var(--purple-bg); --accent-glow: 0 0 24px rgba(139,92,246,.2); }
+body[data-profile="industriel"]   { --accent: var(--amber);  --accent-bg: var(--amber-bg);  --accent-glow: var(--amber-glow); }
+body[data-profile="particulier"]  { --accent: var(--green);  --accent-bg: var(--green-bg);  --accent-glow: 0 0 24px rgba(34,197,94,.2); }
+
+/* ── Reset ────────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
+body {
+  font-family: var(--font);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  background: var(--bg-base);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+a { text-decoration:none; color:inherit; }
+button { cursor:pointer; border:none; background:none; font-family:inherit; }
+ul,ol { list-style:none; }
+img,svg { display:block; max-width:100%; }
+
+/* ── Lucide icon size defaults ────────────────────────────── */
+svg[data-lucide] { width:18px; height:18px; stroke-width:1.75; flex-shrink:0; }
+
+/* ── Animations ───────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(14px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity:0; }
+  to   { opacity:1; }
+}
+@keyframes slideRight {
+  from { opacity:0; transform:translateX(-14px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes pulse {
+  0%,100% { opacity:1; }
+  50%      { opacity:.5; }
+}
+@keyframes rotateSun {
+  from { transform:rotate(0deg); }
+  to   { transform:rotate(360deg); }
+}
+@keyframes glowPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+  50%      { box-shadow: 0 0 0 6px rgba(245,158,11,0.15); }
+}
+@keyframes countUp {
+  from { opacity:0; transform:scale(.8); }
+  to   { opacity:1; transform:scale(1); }
+}
+@keyframes shimmer {
+  0% { background-position:-200% 0; }
+  100% { background-position:200% 0; }
+}
+@keyframes barGrow {
+  from { width:0; }
+}
+@keyframes slideDown {
+  from { opacity:0; transform:translateY(-8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.fade-up    { animation: fadeUp .4s var(--t) both; }
+.fade-in    { animation: fadeIn .3s var(--t) both; }
+.slide-right{ animation: slideRight .35s var(--t) both; }
+
+/* ── Stagger delays ───────────────────────────────────────── */
+.stagger > *:nth-child(1) { animation-delay:.05s; }
+.stagger > *:nth-child(2) { animation-delay:.10s; }
+.stagger > *:nth-child(3) { animation-delay:.15s; }
+.stagger > *:nth-child(4) { animation-delay:.20s; }
+.stagger > *:nth-child(5) { animation-delay:.25s; }
+.stagger > *:nth-child(6) { animation-delay:.30s; }
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--bg-hover); border-radius:4px; }
+::-webkit-scrollbar-thumb:hover { background:var(--bg-elevated); }
+
+/* ── Utils ────────────────────────────────────────────────── */
+.hidden { display:none !important; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }

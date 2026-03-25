@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="description" content="Nukunu Solar — Plateforme SaaS intelligente pour la gestion complète de votre énergie solaire"/>
+  <title>Nukunu Solar — Intelligence Solaire</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/design-system.css"/>
+  <link rel="stylesheet" href="css/layout.css"/>
+  <link rel="stylesheet" href="css/components.css"/>
+  <link rel="stylesheet" href="css/auth.css"/>
+  <link rel="stylesheet" href="css/landing.css"/>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     LANDING PAGE
+══════════════════════════════════ -->
+<div id="landing-page" class="landing-page">
+  <div class="landing-page__bg">
+    <div class="landing-orb landing-orb--amber"></div>
+    <div class="landing-orb landing-orb--blue"></div>
+    <div class="landing-grid"></div>
+  </div>
+
+  <header class="landing-nav">
+    <div class="landing-brand">
+      <div class="landing-brand__icon"><i data-lucide="sun"></i></div>
+      <span class="landing-brand__wordmark">Nukunu <span>Solar</span></span>
+    </div>
+    <div class="landing-nav__actions">
+      <button class="btn btn-ghost" id="landing-login-btn">Se connecter</button>
+      <button class="btn btn-primary" id="landing-register-btn">Créer un compte</button>
+    </div>
+  </header>
+
+  <main class="landing-hero">
+    <section class="landing-hero__content">
+      <span class="landing-kicker">Plateforme SaaS solaire tout-en-un</span>
+      <h1 class="landing-title">Pilotez le solaire, la maintenance, la conformité et les revenus depuis une seule interface.</h1>
+      <p class="landing-subtitle">Nukunu Solar centralise le monitoring, l’exploitation, la facturation, le CRM et l’optimisation énergétique pour installateurs, fonds, industriels et particuliers.</p>
+      <div class="landing-cta">
+        <button class="btn btn-primary btn-lg" id="landing-start-btn">
+          Entrer dans la plateforme <i data-lucide="arrow-right"></i>
+        </button>
+        <button class="btn btn-secondary btn-lg" id="landing-demo-btn">
+          Voir les modules <i data-lucide="sparkles"></i>
+        </button>
+      </div>
+      <div class="landing-trust">
+        <span>Monitoring multi-sites</span>
+        <span>Maintenance O&amp;M</span>
+        <span>Conformité réglementaire</span>
+        <span>Facturation &amp; CRM</span>
+      </div>
+    </section>
+
+    <section class="landing-showcase">
+      <div class="landing-showcase__card landing-showcase__card--hero">
+        <div class="landing-panel__top">
+          <span class="landing-panel__label">Vue portefeuille</span>
+          <span class="badge badge--green">Temps réel</span>
+        </div>
+        <div class="landing-metric">
+          <span class="landing-metric__value" id="landing-metric-assets">28.1 MWc</span>
+          <span class="landing-metric__caption">actifs supervisés</span>
+        </div>
+        <div class="landing-mini-grid">
+          <div class="landing-stat">
+            <span class="landing-stat__label">PR moyen</span>
+            <span class="landing-stat__value" id="landing-metric-pr">81.2%</span>
+          </div>
+          <div class="landing-stat">
+            <span class="landing-stat__label">Revenus YTD</span>
+            <span class="landing-stat__value" id="landing-metric-revenue">6.6 M€</span>
+          </div>
+          <div class="landing-stat">
+            <span class="landing-stat__label">Tickets ouverts</span>
+            <span class="landing-stat__value" id="landing-metric-tickets">3</span>
+          </div>
+          <div class="landing-stat">
+            <span class="landing-stat__label">Alertes critiques</span>
+            <span class="landing-stat__value" id="landing-metric-alerts">2</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="landing-showcase__stack">
+        <div class="landing-showcase__card">
+          <div class="landing-panel__top">
+            <span class="landing-panel__label">Maintenance</span>
+            <i data-lucide="wrench"></i>
+          </div>
+          <p>Kanban des interventions, SLA, tickets critiques et planning techniciens.</p>
+        </div>
+        <div class="landing-showcase__card">
+          <div class="landing-panel__top">
+            <span class="landing-panel__label">Optimisation</span>
+            <i data-lucide="zap"></i>
+          </div>
+          <p>Prix spot, règles batterie, arbitrage énergétique et visibilité business.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="landing-sections" id="landing-sections">
+    <article class="landing-feature">
+      <i data-lucide="activity"></i>
+      <h3>Supervision continue</h3>
+      <p>Suivi des sites, alertes, KPI, production et performance dans un cockpit unique.</p>
+    </article>
+    <article class="landing-feature">
+      <i data-lucide="shield-check"></i>
+      <h3>Conformité maîtrisée</h3>
+      <p>Documents, échéances réglementaires et checklists par profil métier.</p>
+    </article>
+    <article class="landing-feature">
+      <i data-lucide="receipt"></i>
+      <h3>Revenus pilotés</h3>
+      <p>Facturation, réconciliation, reporting et lecture claire des flux financiers.</p>
+    </article>
+  </section>
+</div>
+
+<!-- ══════════════════════════════════
+     AUTH OVERLAY
+     Login / Register entry gate
+══════════════════════════════════ -->
+<div id="auth-overlay" class="auth-overlay hidden">
+  <div class="auth-bg-shapes">
+    <div class="auth-shape auth-shape--1"></div>
+    <div class="auth-shape auth-shape--2"></div>
+  </div>
+
+  <div class="auth-card" id="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo__icon"><i data-lucide="sun"></i></div>
+      <div class="auth-logo__text">Nukunu <span>Solar</span></div>
+    </div>
+
+    <!-- Login View -->
+    <div id="auth-view-login">
+      <div class="auth-header">
+        <h2 class="auth-title">Bon retour parmi nous</h2>
+        <p class="auth-subtitle">Accédez à votre intelligence solaire</p>
+      </div>
+
+      <div id="login-error" class="auth-error hidden">
+        <i data-lucide="alert-circle"></i>
+        <span></span>
+      </div>
+
+      <form class="auth-form" id="login-form">
+        <div class="auth-input-group">
+          <input type="email" id="login-email" class="auth-input" placeholder="Email" required>
+          <i data-lucide="mail"></i>
+        </div>
+        <div class="auth-input-group">
+          <input type="password" id="login-password" class="auth-input" placeholder="Mot de passe" required>
+          <i data-lucide="lock"></i>
+          <button type="button" class="auth-pass-toggle" onclick="App.togglePassword('login-password', this)">
+            <i data-lucide="eye"></i>
+          </button>
+        </div>
+        <div class="auth-actions">
+          <label class="auth-remember">
+            <input type="checkbox" id="login-remember" checked> Se souvenir de moi
+          </label>
+          <a href="#" class="auth-forgot" id="forgot-password-btn">Mot de passe oublié ?</a>
+        </div>
+        <button type="submit" class="btn btn-primary auth-btn">
+          Se connecter <i data-lucide="arrow-right"></i>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Nouveau sur Nukunu ? <button type="button" id="to-register">Créer un compte</button>
+      </div>
+    </div>
+
+    <!-- Register View -->
+    <div id="auth-view-register">
+      <div class="auth-header">
+        <h2 class="auth-title">Rejoignez l'aventure</h2>
+        <p class="auth-subtitle">Commencez à optimiser votre énergie solaire</p>
+      </div>
+
+      <div id="register-error" class="auth-error hidden">
+        <i data-lucide="alert-circle"></i>
+        <span></span>
+      </div>
+
+      <form class="auth-form" id="register-form">
+        <div class="auth-input-group">
+          <input type="text" id="register-name" class="auth-input" placeholder="Nom complet" required>
+          <i data-lucide="user"></i>
+        </div>
+        <div class="auth-input-group">
+          <input type="email" id="register-email" class="auth-input" placeholder="Email" required>
+          <i data-lucide="mail"></i>
+        </div>
+        <div class="auth-input-group">
+          <select class="auth-input" id="register-role" required style="padding-left: 42px; appearance: none; background: rgba(0,0,0,.2);">
+            <option value="" disabled selected>Sélectionnez votre rôle</option>
+            <option value="installateur">🚀 Installateur / Exploitant</option>
+            <option value="fonds">🏢 Fonds d'Investissement</option>
+            <option value="industriel">🏭 Industriel / Tertiaire</option>
+            <option value="particulier">🏠 Particulier</option>
+          </select>
+          <i data-lucide="briefcase"></i>
+        </div>
+        <div class="auth-input-group">
+          <input type="password" id="register-password" class="auth-input" placeholder="Mot de passe" required>
+          <i data-lucide="lock"></i>
+          <button type="button" class="auth-pass-toggle" onclick="App.togglePassword('register-password', this)">
+            <i data-lucide="eye"></i>
+          </button>
+        </div>
+        <button type="submit" class="btn btn-primary auth-btn">
+          S'inscrire <i data-lucide="rocket"></i>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Déjà un compte ? <button type="button" id="to-login">Se connecter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     ONBOARDING OVERLAY
+══════════════════════════════════ -->
+<div id="onboarding-overlay" class="onboarding-overlay hidden">
+  <div class="ob-bg-glow ob-bg-glow--1"></div>
+  <div class="ob-bg-glow ob-bg-glow--2"></div>
+  <div class="ob-bg-glow ob-bg-glow--3"></div>
+
+  <div class="onboarding-card">
+    <div class="ob-logo">
+      <div class="ob-logo-icon"><i data-lucide="sun"></i></div>
+      <div class="ob-logo-wordmark">Nukunu <span>Solar</span></div>
+    </div>
+    <p class="ob-tagline">Intelligence solaire centralisée. Monitoring, finance, maintenance — en une seule interface.</p>
+
+    <h2 class="ob-question">Sélectionnez votre profil</h2>
+
+    <div class="profile-grid" id="profile-grid">
+
+      <button class="profile-card" data-profile="installateur" id="profile-installateur">
+        <div class="profile-card__icon profile-card__icon--blue">
+          <i data-lucide="hard-hat"></i>
+        </div>
+        <div class="profile-card__body">
+          <span class="profile-card__name">Installateur</span>
+          <span class="profile-card__desc">Clients · SAV · Chantiers · Devis</span>
+        </div>
+        <i data-lucide="chevron-right" class="profile-card__arrow"></i>
+      </button>
+
+      <button class="profile-card" data-profile="fonds" id="profile-fonds">
+        <div class="profile-card__icon profile-card__icon--purple">
+          <i data-lucide="trending-up"></i>
+        </div>
+        <div class="profile-card__body">
+          <span class="profile-card__name">Fonds / Agrégateur</span>
+          <span class="profile-card__desc">Portefeuille · IRR · TRI · MW</span>
+        </div>
+        <i data-lucide="chevron-right" class="profile-card__arrow"></i>
+      </button>
+
+      <button class="profile-card" data-profile="industriel" id="profile-industriel">
+        <div class="profile-card__icon profile-card__icon--amber">
+          <i data-lucide="factory"></i>
+        </div>
+        <div class="profile-card__body">
+          <span class="profile-card__name">Industriel</span>
+          <span class="profile-card__desc">Autoconsommation · Facture · Conformité</span>
+        </div>
+        <i data-lucide="chevron-right" class="profile-card__arrow"></i>
+      </button>
+
+      <button class="profile-card" data-profile="particulier" id="profile-particulier">
+        <div class="profile-card__icon profile-card__icon--green">
+          <i data-lucide="home"></i>
+        </div>
+        <div class="profile-card__body">
+          <span class="profile-card__name">Particulier</span>
+          <span class="profile-card__desc">Ma maison · Mes économies · kWh</span>
+        </div>
+        <i data-lucide="chevron-right" class="profile-card__arrow"></i>
+      </button>
+
+    </div>
+
+    <p class="ob-footer">Votre profil applicatif est aligné sur votre compte. Sélectionnez votre rôle pour continuer.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     APP SHELL
+══════════════════════════════════ -->
+<div id="app" class="app-shell hidden">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo__icon"><i data-lucide="sun"></i></div>
+        <span class="sidebar-logo__text">Nukunu<span>Solar</span></span>
+      </div>
+      <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" title="Réduire">
+        <i data-lucide="panel-left-close"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <div class="nav-section-label">Supervision</div>
+      <a class="nav-item active" data-module="monitoring" id="nav-monitoring" href="#">
+        <span class="nav-icon"><i data-lucide="activity"></i></span>
+        <span class="nav-label">Monitoring</span>
+        <span class="nav-badge nav-badge--red" id="badge-monitoring">4</span>
+      </a>
+      <a class="nav-item" data-module="reporting" id="nav-reporting" href="#">
+        <span class="nav-icon"><i data-lucide="bar-chart-2"></i></span>
+        <span class="nav-label">Reporting</span>
+      </a>
+
+      <div class="nav-section-label">Opérations</div>
+      <a class="nav-item" data-module="maintenance" id="nav-maintenance" href="#">
+        <span class="nav-icon"><i data-lucide="wrench"></i></span>
+        <span class="nav-label">Maintenance O&amp;M</span>
+        <span class="nav-badge nav-badge--amber" id="badge-maintenance">2</span>
+      </a>
+      <a class="nav-item" data-module="facturation" id="nav-facturation" href="#">
+        <span class="nav-icon"><i data-lucide="receipt"></i></span>
+        <span class="nav-label">Facturation</span>
+      </a>
+      <a class="nav-item" data-module="conformite" id="nav-conformite" href="#">
+        <span class="nav-icon"><i data-lucide="shield-check"></i></span>
+        <span class="nav-label">Conformité</span>
+      </a>
+
+      <div class="nav-section-label">Développement</div>
+      <a class="nav-item" data-module="vente" id="nav-vente" href="#">
+        <span class="nav-icon"><i data-lucide="briefcase"></i></span>
+        <span class="nav-label">Vente &amp; CRM</span>
+      </a>
+      <a class="nav-item" data-module="optimisation" id="nav-optimisation" href="#">
+        <span class="nav-icon"><i data-lucide="zap"></i></span>
+        <span class="nav-label">Optimisation</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="profile-switcher" id="profile-switcher">
+        <div class="profile-switcher__avatar" id="profile-switcher-avatar">
+          <i data-lucide="hard-hat" id="profile-switcher-icon"></i>
+        </div>
+        <div class="profile-switcher__info">
+          <span class="profile-switcher__role" id="profile-switcher-label">Installateur</span>
+          <span class="profile-switcher__action">Voir mon profil</span>
+        </div>
+        <i data-lucide="refresh-cw" class="profile-switcher__icon"></i>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content" id="main-content">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" id="menu-toggle" title="Menu">
+          <i data-lucide="menu"></i>
+        </button>
+        <nav class="breadcrumb" aria-label="Fil d'Ariane">
+          <span class="breadcrumb__root">Nukunu Solar</span>
+          <i data-lucide="chevron-right" class="breadcrumb__sep"></i>
+          <span class="breadcrumb__current" id="breadcrumb-current">Monitoring</span>
+        </nav>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-clock" id="topbar-clock">12:00</div>
+        <div class="profile-badge" id="topbar-profile-badge" data-profile="installateur">
+          <i data-lucide="hard-hat" id="topbar-profile-icon"></i>
+          <span id="topbar-profile-label">INSTALLATEUR</span>
+        </div>
+        <button class="icon-btn" id="theme-toggle" title="Changer le thème">
+          <i data-lucide="sun" id="theme-icon"></i>
+        </button>
+        <button class="icon-btn" id="notif-btn" title="Notifications">
+          <i data-lucide="bell"></i>
+          <span class="notif-dot" id="notif-dot">3</span>
+        </button>
+        <button class="icon-btn" id="help-btn" title="Aide">
+          <i data-lucide="help-circle"></i>
+        </button>
+        <div class="user-avatar" id="avatar-btn" title="Mon compte" style="cursor: pointer;">NS</div>
+      </div>
+    </header>
+
+    <!-- ALERT STRIP -->
+    <div class="alert-strip" id="alert-strip"></div>
+
+    <!-- MODULE VIEWS -->
+    <div class="module-view active" id="module-monitoring"></div>
+    <div class="module-view" id="module-reporting"></div>
+    <div class="module-view" id="module-maintenance"></div>
+    <div class="module-view" id="module-facturation"></div>
+    <div class="module-view" id="module-conformite"></div>
+    <div class="module-view" id="module-vente"></div>
+    <div class="module-view" id="module-optimisation"></div>
+    <div class="module-view" id="module-account"></div>
+
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-title">Détail</h3>
+      <button class="modal-close" id="modal-close" title="Fermer">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- SCRIPTS -->
+<script src="js/data.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/modules/monitoring.js"></script>
+<script src="js/modules/reporting.js"></script>
+<script src="js/modules/maintenance.js"></script>
+<script src="js/modules/facturation.js"></script>
+<script src="js/modules/conformite.js"></script>
+<script src="js/modules/vente.js"></script>
+<script src="js/modules/optimisation.js"></script>
+<script src="js/modules/account.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

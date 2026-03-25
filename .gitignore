@@ -1,0 +1,30 @@
+# Secrets
+.env
+*.env
+auth_key.json
+jwt_secret.txt
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.old
+terraform.tfvars
+.terraform.lock.hcl
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Docker
+docker/data/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.log
+dist/
+tmp/

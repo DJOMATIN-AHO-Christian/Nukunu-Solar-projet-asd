@@ -1,0 +1,22 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js",
+    "test": "node --check server.js && node --check live-data.js && node --check seed.js && node --check ../js/app.js && node --check ../js/data.js && node --check ../js/profile.js && node --check ../js/modules/account.js && node --check ../js/modules/conformite.js && node --check ../js/modules/facturation.js && node --check ../js/modules/maintenance.js && node --check ../js/modules/monitoring.js && node --check ../js/modules/optimisation.js && node --check ../js/modules/reporting.js && node --check ../js/modules/vente.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.20.0"
+  }
+}

@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  nukunu-db:
+    image: postgres:16-alpine
+    container_name: nukunu-postgres
+    environment:
+      POSTGRES_USER: nukunu_admin
+      POSTGRES_PASSWORD: nukunu_password
+      POSTGRES_DB: nukunu_solar
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  nukunu-app:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    container_name: nukunu-app
+    depends_on:
+      - nukunu-db
+    environment:
+      PORT: 3002
+      DB_HOST: nukunu-db
+      DB_PORT: 5432
+      DB_NAME: nukunu_solar
+      DB_USER: nukunu_admin
+      DB_PASSWORD: nukunu_password
+      JWT_SECRET: local_docker_secret_change_me
+      ALLOWED_ORIGINS: http://localhost:3002,http://127.0.0.1:3002
+    ports:
+      - "3002:3002"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
