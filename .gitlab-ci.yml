@@ -1,0 +1,28 @@
+# ════════════════════════════════════════════════════════════
+# GitLab CI/CD Configuration — Nukunu Solar
+# ════════════════════════════════════════════════════════════
+
+stages:
+  - lint
+  - build
+
+# 1. Étape de Linting (Qualité de code)
+lint_backend:
+  stage: lint
+  image: node:20-alpine
+  script:
+    - cd server
+    - npm install
+    - # npm run lint  # Placeholder pour l'ajout de ESLint plus tard
+
+# 2. Étape de Build (Vérification de la conteneurisation)
+build_docker:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+  script:
+    - docker build -f docker/backend.Dockerfile .
+    - echo "✅ Build Docker réussi"
