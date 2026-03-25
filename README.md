@@ -60,6 +60,19 @@ graph TD
 3. **Persistance** : Toutes les transactions sont écrites sur des **Volumes Persistants** (FS) pour assurer la durabilité des données.
 4. **Synchronisation Externe** : En arrière-plan, l'API interroge périodiquement des **Services Externes** (Météo/Prix) pour maintenir les dashboards à jour sans intervention utilisateur.
 
+#### 📝 Guide de Lecture du Diagramme :
+- **Compartimentation (Subgraphs)** : 
+    - `OCI` : Délimite la bordure de confiance de l'infrastructure Cloud.
+    - `Subnet` : Représente la zone réseau publique où le trafic entrant est filtré.
+    - `K3s Cluster` : Matérialise l'orchestration logicielle.
+- **Sémantique des Noeuds** :
+    - `Utilisateur(( ))` : Cercle double pour un acteur externe.
+    - `DB[( )]` : Forme de cylindre pour la base de données persistante.
+    - `API[ ]` : Rectangle pour un service applicatif.
+- **Relations** :
+    - `Ligne Pleine (-->)` : Requête synchrone (HTTP/SQL).
+    - `Ligne Pointillée (-.->)` : Flux asynchrone ou synchronisation périodique.
+
 ---
 
 ## 📸 Aperçu de l'Interface (Mockups Réels)
