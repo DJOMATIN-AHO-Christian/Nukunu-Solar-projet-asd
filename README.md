@@ -45,6 +45,15 @@ graph TD
     ExtAPI["APIs Externes (Météo/Prix)"] -.->|Sync| API
 ```
 
+#### Détails des Composants :
+- **Utilisateur** : Accès sécurisé via HTTPS à l'application.
+- **Load Balancer / Ingress** : Gère la terminaison SSL et distribue le trafic vers les pods du cluster.
+- **K3s Cluster (ARM)** : Orchestrateur Kubernetes optimisé pour les ressources ARM (OCI Ampere), assurant la haute disponibilité et le redémarrage automatique des services.
+- **Backend API (Node.js)** : Le "cœur" applicatif qui traite les requêtes, gère les sessions JWT et assure l'isolation des données entre les rôles.
+- **PostgreSQL 16** : Base de données relationnelle stockant les assets, les mesures et les documents de conformité.
+- **Persistent Volumes (FS)** : Garantie de persistance des données DB même en cas de redémarrage des conteneurs.
+- **APIs Externes** : Connecteurs synchrones pour enrichir les dashboards avec des données d'ensoleillement et les prix du marché de l'énergie (EPEX Spot).
+
 ---
 
 ## 📸 Aperçu de l'Interface (Mockups Réels)
