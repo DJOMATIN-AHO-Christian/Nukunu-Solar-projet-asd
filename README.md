@@ -73,6 +73,14 @@ graph TD
     - `Ligne Pleine (-->)` : Requête synchrone (HTTP/SQL).
     - `Ligne Pointillée (-.->)` : Flux asynchrone ou synchronisation périodique.
 
+### ⚙️ Analyse Technique de l'Infrastructure
+L'architecture a été conçue pour maximiser l'efficacité opérationnelle et la sécurité :
+
+- **Optimisation ARM (OCI Ampere)** : Le choix des instances Ampere A1 permet de bénéficier d'un rapport performance/prix supérieur pour les workloads Node.js, tout en s'inscrivant dans une démarche d'efficience énergétique au sein du cloud Oracle.
+- **Orchestration K3s** : Préféré à un Kubernetes standard pour sa légèreté, K3s permet de maintenir une gestion de conteneurs de niveau production avec un overhead minimal, idéal pour une infrastructure SaaS agile.
+- **Segmentation Réseau (VCN & Subnets)** : Le diagramme illustre une stratégie de défense en profondeur. Le trafic arrive via un Load Balancer public, filtré par des Security Lists, avant d'atteindre le cluster interne.
+- **Gestion du State (Persistance)** : La base de données PostgreSQL est isolée et couplée à des volumes de stockage persistants (OCI Block Volumes), garantissant que les données critiques de production ne sont jamais perdues lors des rotations de pods.
+
 ---
 
 ## 📸 Aperçu de l'Interface (Mockups Réels)
