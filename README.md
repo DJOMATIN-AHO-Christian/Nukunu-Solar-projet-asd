@@ -1,13 +1,13 @@
 # Nukunu Solar — Plateforme SaaS d'Optimisation Énergétique
 
-## 🌟 Présentation du Projet
+## Présentation du Projet
 Nukunu Solar est une solution logicielle innovante conçue pour les acteurs de la filière photovoltaïque (**Installateurs, Fonds d'investissement, Industriels et Particuliers**). 
 
 La plateforme centralise le monitoring en temps réel, la maintenance O&M, l'automatisation de la facturation et l'optimisation des flux énergétiques (stockage batterie et arbitrage marché) pour maximiser la rentabilité des actifs solaires.
 
 ---
 
-## 🏗️ Architecture Détaillée
+## Architecture Détaillée
 
 Le système repose sur une architecture distribuée, conteneurisée et hautement sécurisée, conçue pour la scalabilité.
 
@@ -27,7 +27,7 @@ Le système repose sur une architecture distribuée, conteneurisée et hautement
 ```mermaid
 graph TD
     subgraph Dev ["1. Développement & CI/CD"]
-        Developer["👨‍💻 Développeur"] -->|Push| Git["Git (GitHub/GitLab)"]
+        Developer["Développeur"] -->|Push| Git["Git (GitHub/GitLab)"]
         Git -->|Trigger| CICD["CI/CD (Actions/GitLab CI)"]
         CICD -->|Build| Docker["Docker Registry"]
     end
@@ -75,7 +75,7 @@ graph TD
 
 ---
 
-## 📸 Aperçu de l'Interface (Mockups Réels)
+## Aperçu de l'Interface (Mockups Réels)
 
 ### 1. Monitoring Temps Réel
 Suivi précis de la production, de l'irradiance et de la performance (PR) des sites.
@@ -91,7 +91,7 @@ Gestion intelligente des batteries, flux de puissance et arbitrage des prix Spot
 
 ---
 
-## 🛠️ Stack Technique
+## Stack Technique
 - **Backend** : Node.js / Express.js / JWT
 - **Frontend** : HTML5 / Modern CSS / Javascript ES6
 - **Base de Données** : PostgreSQL 16
@@ -100,7 +100,7 @@ Gestion intelligente des batteries, flux de puissance et arbitrage des prix Spot
 
 ---
 
-## 🚀 Installation & Déploiement
+## Installation & Déploiement
 
 ### Local (Docker Compose)
 ```bash
