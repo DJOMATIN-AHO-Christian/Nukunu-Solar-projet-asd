@@ -23,63 +23,55 @@ Le système repose sur une architecture distribuée, conteneurisée et hautement
    - **Orchestration** : Kubernetes léger (K3s) pour la résilience et le self-healing.
    - **Automatisation** : Terraform (IaC) et Ansible pour garantir des environnements reproductibles et idempotents.
 
-### Visualisation Mermaid (Infrastructure)
+### Visualisation Interactive (Cycle de Vie & Infrastructure)
 ```mermaid
 graph TD
-    subgraph OCI ["Oracle Cloud Infrastructure (OCI)"]
-        VCN["VCN (Virtual Cloud Network)"]
-        subgraph Subnet ["Public Subnet"]
-            LB["Load Balancer / Ingress"]
-            subgraph K3s ["K3s Cluster (ARM Ampere)"]
+    subgraph Dev ["1. Développement & CI/CD"]
+        Developer["👨‍💻 Développeur"] -->|Push| Git["Git (GitHub/GitLab)"]
+        Git -->|Trigger| CICD["CI/CD (Actions/GitLab CI)"]
+        CICD -->|Build| Docker["Docker Registry"]
+    end
+
+    subgraph IaC ["2. Provisioning & Config"]
+        TF["Terraform"] -->|Provision| OCI_Res["OCI (VCN, Subnets, Ampere)"]
+        Ansible["Ansible"] -->|Configure| K3s_Setup["K3s & Node Setup"]
+    end
+
+    subgraph Runtime ["3. Environnement de Production (OCI)"]
+        subgraph Network ["Sécurité Réseau"]
+            SL["Security Lists / Firewall"]
+            LB["Load Balancer (TLS)"]
+        end
+
+        subgraph K3s ["Cluster K3s (Orchestration)"]
+            Ingress["Ingress Controller"]
+            subgraph Pods ["Services Conteneurisés"]
                 API["Backend API (Node.js)"]
+                AUTH["JWT Auth Layer"]
                 DB[("PostgreSQL 16")]
-                FS["Persistent Volumes"]
             end
+            Storage["OCI Block Storage (Persistance)"]
         end
     end
 
+    subgraph Extern ["4. Écosystème Externe"]
+        Meteo["APIs Météo (Solcast/OpenWeather)"]
+        Market["Prix Marché (EPEX Spot)"]
+    end
+
+    %% Interactions
+    Developer -.->|Manage| TF
+    Developer -.->|Manage| Ansible
     User((Utilisateur)) -->|HTTPS| LB
-    LB --> API
+    LB --> SL
+    SL --> Ingress
+    Ingress --> AUTH
+    AUTH --> API
     API -->|SQL| DB
-    DB --- FS
-    ExtAPI["APIs Externes (Météo/Prix)"] -.->|Sync| API
+    DB --- Storage
+    Meteo -.->|Sync| API
+    Market -.->|Sync| API
 ```
-
-#### Détails des Composants :
-- **Utilisateur** : Accès sécurisé via HTTPS à l'application.
-- **Load Balancer / Ingress** : Gère la terminaison SSL et distribue le trafic vers les pods du cluster.
-- **K3s Cluster (ARM)** : Orchestrateur Kubernetes optimisé pour les ressources ARM (OCI Ampere), assurant la haute disponibilité et le redémarrage automatique des services.
-- **Backend API (Node.js)** : Le "cœur" applicatif qui traite les requêtes, gère les sessions JWT et assure l'isolation des données entre les rôles.
-- **PostgreSQL 16** : Base de données relationnelle stockant les assets, les mesures et les documents de conformité.
-- **Persistent Volumes (FS)** : Garantie de persistance des données DB même en cas de redémarrage des conteneurs.
-- **APIs Externes** : Connecteurs synchrones pour enrichir les dashboards avec des données d'ensoleillement et les prix du marché de l'énergie (EPEX Spot).
-
-#### Flux de Données & Interactions :
-1. **Requêtes Client** : L'utilisateur initie une connexion sécurisée (HTTPS). Le **Load Balancer** intercepte la requête et la transmet au service **API** disponible dans le cluster.
-2. **Traitement & Auth** : L'**API** valide l'identité (JWT). Si l'accès est autorisé, elle interroge la **Base de Données** via des requêtes SQL optimisées.
-3. **Persistance** : Toutes les transactions sont écrites sur des **Volumes Persistants** (FS) pour assurer la durabilité des données.
-4. **Synchronisation Externe** : En arrière-plan, l'API interroge périodiquement des **Services Externes** (Météo/Prix) pour maintenir les dashboards à jour sans intervention utilisateur.
-
-#### 📝 Guide de Lecture du Diagramme :
-- **Compartimentation (Subgraphs)** : 
-    - `OCI` : Délimite la bordure de confiance de l'infrastructure Cloud.
-    - `Subnet` : Représente la zone réseau publique où le trafic entrant est filtré.
-    - `K3s Cluster` : Matérialise l'orchestration logicielle.
-- **Sémantique des Noeuds** :
-    - `Utilisateur(( ))` : Cercle double pour un acteur externe.
-    - `DB[( )]` : Forme de cylindre pour la base de données persistante.
-    - `API[ ]` : Rectangle pour un service applicatif.
-- **Relations** :
-    - `Ligne Pleine (-->)` : Requête synchrone (HTTP/SQL).
-    - `Ligne Pointillée (-.->)` : Flux asynchrone ou synchronisation périodique.
-
-### ⚙️ Analyse Technique de l'Infrastructure
-L'architecture a été conçue pour maximiser l'efficacité opérationnelle et la sécurité :
-
-- **Optimisation ARM (OCI Ampere)** : Le choix des instances Ampere A1 permet de bénéficier d'un rapport performance/prix supérieur pour les workloads Node.js, tout en s'inscrivant dans une démarche d'efficience énergétique au sein du cloud Oracle.
-- **Orchestration K3s** : Préféré à un Kubernetes standard pour sa légèreté, K3s permet de maintenir une gestion de conteneurs de niveau production avec un overhead minimal, idéal pour une infrastructure SaaS agile.
-- **Segmentation Réseau (VCN & Subnets)** : Le diagramme illustre une stratégie de défense en profondeur. Le trafic arrive via un Load Balancer public, filtré par des Security Lists, avant d'atteindre le cluster interne.
-- **Gestion du State (Persistance)** : La base de données PostgreSQL est isolée et couplée à des volumes de stockage persistants (OCI Block Volumes), garantissant que les données critiques de production ne sont jamais perdues lors des rotations de pods.
 
 ---
 
