@@ -23,6 +23,28 @@ Le système repose sur une architecture distribuée, conteneurisée et hautement
    - **Orchestration** : Kubernetes léger (K3s) pour la résilience et le self-healing.
    - **Automatisation** : Terraform (IaC) et Ansible pour garantir des environnements reproductibles et idempotents.
 
+### Visualisation Mermaid (Infrastructure)
+```mermaid
+graph TD
+    subgraph OCI ["Oracle Cloud Infrastructure (OCI)"]
+        VCN["VCN (Virtual Cloud Network)"]
+        subgraph Subnet ["Public Subnet"]
+            LB["Load Balancer / Ingress"]
+            subgraph K3s ["K3s Cluster (ARM Ampere)"]
+                API["Backend API (Node.js)"]
+                DB[("PostgreSQL 16")]
+                FS["Persistent Volumes"]
+            end
+        end
+    end
+
+    User((Utilisateur)) -->|HTTPS| LB
+    LB --> API
+    API -->|SQL| DB
+    DB --- FS
+    ExtAPI["APIs Externes (Météo/Prix)"] -.->|Sync| API
+```
+
 ---
 
 ## 📸 Aperçu de l'Interface (Mockups Réels)
