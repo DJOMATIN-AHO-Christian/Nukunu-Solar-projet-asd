@@ -1,0 +1,55 @@
+---
+- name: Setup Private Docker Registry
+  hosts: master
+  become: yes
+  tasks:
+    - name: Install apache2-utils for htpasswd
+      apt:
+        name: apache2-utils
+        state: present
+
+    - name: Ensure registry directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /opt/registry/auth
+        - /opt/registry/data
+
+    - name: Print info for generating htpasswd manually
+      debug:
+        msg: "Sécurité : Lancez 'htpasswd -Bc /opt/registry/auth/htpasswd votre_utilisateur' sur le serveur pour définir le mot de passe manuellement, sans le versionner en clair dans Git."
+
+    - name: Start Docker Registry container
+      docker_container:
+        name: registry
+        image: registry:2
+        state: started
+        restart_policy: always
+        ports:
+          - "5000:5000"
+        volumes:
+          - /opt/registry/data:/var/lib/registry
+          - /opt/registry/auth:/auth
+        env:
+          REGISTRY_AUTH: htpasswd
+          REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+          REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+
+    - name: Configure insecure registry for local K3s pull
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": { "max-size": "100m", "max-file": "3" },
+            "insecure-registries" : ["localhost:5000", "127.0.0.1:5000"]
+          }
+      notify: Restart Docker
+
+  handlers:
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted
