@@ -27,7 +27,10 @@ const ModuleMonitoring = (() => {
 
     if (profile === 'particulier') { _renderParticulier(view); }
     else if (profile === 'industriel') { _renderIndustriel(view); }
-    else { _renderPro(view, profile); }
+    else { 
+      const effectiveProfile = (profile === 'super_admin') ? 'installateur' : profile;
+      _renderPro(view, effectiveProfile); 
+    }
   }
 
   /* ── PARTICULIER ─────────────────────────────── */
@@ -175,6 +178,11 @@ const ModuleMonitoring = (() => {
         </div>
         <div class="module-actions">
           ${_renderLivePortfolioBadge(liveSummary)}
+          ${profile === 'super_admin' ? `
+            <button class="btn btn-primary btn-sm" onclick="ModuleAdmin.setTab('supervision'); App.navigateTo('admin')">
+              <i data-lucide="line-chart"></i> Supervision Admin
+            </button>
+          ` : ''}
           <select class="form-select" id="monitoring-site-quick" style="width:180px;height:36px">
             <option value="all" ${filters.site === 'all' ? 'selected' : ''}>Tous les sites</option>
             ${allSites.map(s=>`<option value="${s.name}" ${filters.site === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}

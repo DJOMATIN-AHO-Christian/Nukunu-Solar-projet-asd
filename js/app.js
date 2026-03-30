@@ -10,9 +10,13 @@ const App = (() => {
   let _clockInterval = null;
   let _charts = {};
   let _eventsBound = false;
-  const _apiBase = window.NUKUNU_API_BASE
+  let _apiBase = window.NUKUNU_API_BASE
     || localStorage.getItem('nukunu_api_base')
-    || 'http://localhost:3002'; // Default to backend port
+    || 'http://localhost:3002';
+
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    _apiBase = 'http://localhost:3002';
+  }
 
   /* ── MODULE RENDERERS MAP ────────────────────────── */
   const _renderers = {
@@ -24,6 +28,7 @@ const App = (() => {
     vente:        () => ModuleVente.render(),
     optimisation: () => ModuleOptimisation.render(),
     account:      () => ModuleAccount.render(),
+    admin:        () => ModuleAdmin.render(),
   };
 
   const _moduleTitles = {
@@ -35,6 +40,7 @@ const App = (() => {
     vente:        'Vente & CRM',
     optimisation: 'Optimisation Énergie',
     account:      'Mon Compte',
+    admin:        'Administration SaaS',
   };
 
   function getApiBase() {
@@ -238,6 +244,12 @@ const App = (() => {
   }
 
   async function _showApp() {
+    const role = window.NukunuStore.get('nukunu_user_role');
+    const adminLink = document.getElementById('nav-admin-link');
+    if (adminLink) {
+      adminLink.classList.toggle('hidden', role !== 'super_admin');
+    }
+
     document.getElementById('landing-page')?.classList.add('hidden');
     document.getElementById('onboarding-overlay').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
@@ -245,6 +257,11 @@ const App = (() => {
     await NukunuData.refreshDashboardData();
     _syncUserUI();
     _updateGlobalBadges();
+    
+    if (role === 'super_admin') {
+      _currentModule = 'admin';
+    }
+    
     _navigateTo(_currentModule || 'monitoring');
     lucide.createIcons();
   }
