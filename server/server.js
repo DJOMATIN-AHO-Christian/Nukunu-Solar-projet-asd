@@ -5,7 +5,21 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { decorateDashboardData, getLiveHealthSummary } = require('./live-data');
+const client = require('prom-client');
+const { getLiveHealthSummary, decorateDashboardData } = require('./live-data');
+const { isAdmin, getAdminStats, getAllUsers, getAuditLogs, getSystemInfo, createUser, deleteUser, getRoleDistribution, broadcastMessage, toggleMaintenance, impersonateUser, getDatabaseHealth, getPrometheusMetrics, globalSearch } = require('./admin-controller');
+
+// Monitoring Setup (BC03)
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+const httpRequestDurationMicroseconds = new client.Histogram({
+  name: 'http_request_duration_ms',
+  help: 'Duration of HTTP requests in ms',
+  labelNames: ['method', 'route', 'code'],
+  buckets: [0.1, 5, 15, 50, 100, 200, 300, 400, 500],
+});
+register.registerMetric(httpRequestDurationMicroseconds);
+
 require('dotenv').config();
 
 const app = express();
@@ -41,13 +55,20 @@ if (!process.env.JWT_SECRET) {
 
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || origin === 'null' || ALLOWED_ORIGINS.includes(origin)) {
+    // Autorise localhost et 127.0.0.1 sur n'importe quel port en local
+    if (!origin || origin === 'null' || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
       callback(null, true);
       return;
     }
     callback(new Error('Origine non autorisée par CORS'));
   }
 }));
+
+// Redirection root
+app.get(['/', '/index.html'], (req, res) => {
+  res.sendFile(path.join(FRONTEND_ROOT, 'index.html'));
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use('/css', express.static(path.join(FRONTEND_ROOT, 'css')));
 app.use('/js', express.static(path.join(FRONTEND_ROOT, 'js')));
@@ -74,6 +95,26 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
+/* ── ADMIN ROUTES (SAAS) ───────────────────────── */
+app.get('/api/admin/stats', authenticateToken, isAdmin, getAdminStats);
+app.get('/api/admin/users', authenticateToken, isAdmin, getAllUsers);
+app.get('/api/admin/logs',  authenticateToken, isAdmin, getAuditLogs);
+app.get('/api/admin/sysinfo', authenticateToken, isAdmin, getSystemInfo);
+app.post('/api/admin/users', authenticateToken, isAdmin, createUser);
+app.delete('/api/admin/users/:id', authenticateToken, isAdmin, deleteUser);
+app.get('/api/admin/role-distribution', authenticateToken, isAdmin, getRoleDistribution);
+app.post('/api/admin/broadcast', authenticateToken, isAdmin, broadcastMessage);
+app.post('/api/admin/maintenance', authenticateToken, isAdmin, toggleMaintenance);
+app.post('/api/admin/impersonate/:id', authenticateToken, isAdmin, impersonateUser);
+app.get('/api/admin/db-health', authenticateToken, isAdmin, getDatabaseHealth);
+app.get('/api/admin/metrics', authenticateToken, isAdmin, getPrometheusMetrics);
+app.get('/api/admin/search', authenticateToken, isAdmin, globalSearch);
 
 function makeToken(user) {
   return jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
@@ -381,7 +422,11 @@ async function ensureDomainData(userId, role) {
     billing_filters: { site: 'all', contract: 'all', status: 'all' },
     optimisation_rules: { mode: 'auto', chargeOffPeak: true, dischargePeak: true, sellSurplus: true },
     dashboard_data: {
-      sites: { [role]: allSites[role] || [] },
+      sites: { 
+        [role]: (role === 'industriel' || role === 'particulier') 
+          ? (allSites[role][0] || {}) 
+          : (allSites[role] || []) 
+      },
       alerts: { [role]: allAlerts[role] || [] },
       warranties: [
         { name: 'Panneaux REC Alpha', site: `Entrepôt Bricard (${uid})`, start: '2024-06-10', years: 25, pct: 4 },

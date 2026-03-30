@@ -54,9 +54,10 @@ resource "oci_core_security_list" "nukunu_sl" {
   }
 
   ingress_security_rules {
-    # SSH restreint à l'IP du bastion si fournie, sinon ouvert pour le test
-    source   = var.bastion_ip != "" ? "${var.bastion_ip}/32" : "0.0.0.0/0"
-    protocol = "6" # TCP
+    # SSH restreint à l'IP d'administration (OBLIGATOIRE pour la conformité BC01)
+    description = "SSH Access - Restricted to Admin IP"
+    source      = var.admin_ip_cidr
+    protocol    = "6" # TCP
     tcp_options { min = 22, max = 22 }
   }
   ingress_security_rules {
@@ -70,9 +71,10 @@ resource "oci_core_security_list" "nukunu_sl" {
     tcp_options { min = 443, max = 443 }
   }
   ingress_security_rules {
-    # K3s API (optionnel, pour kubectl distant)
-    source   = var.bastion_ip != "" ? "${var.bastion_ip}/32" : "0.0.0.0/0"
-    protocol = "6"
+    # K3s API (Restreint à l'IP d'administration)
+    description = "K3s API Access - Restricted"
+    source      = var.admin_ip_cidr
+    protocol    = "6"
     tcp_options { min = 6443, max = 6443 }
   }
 }

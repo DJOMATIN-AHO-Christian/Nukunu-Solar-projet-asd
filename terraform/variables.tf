@@ -34,8 +34,7 @@ variable "ssh_public_key" {
   type        = string
 }
 
-variable "bastion_ip" {
-  description = "Votre IP publique pour limiter l'accès SSH (laisser vide pour autoriser tout le monde temporairement)"
+variable "admin_ip_cidr" {
+  description = "CIDR de l'IP autorisée à administrer le nœud (ex: 1.2.3.4/32)"
   type        = string
-  default     = ""
 }

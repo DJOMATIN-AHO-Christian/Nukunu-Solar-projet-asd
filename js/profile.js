@@ -37,6 +37,14 @@ const Profile = (() => {
       modules:    ['monitoring','reporting','maintenance','facturation','conformite','optimisation'],
       navHide:    ['vente'],
     },
+    super_admin: {
+      label:      'Administrateur SaaS',
+      badge:      'SUPER-ADMIN',
+      icon:       'shield-check',
+      color:      '#F59E0B',
+      modules:    ['admin','account'],
+      navHide:    ['monitoring','reporting','maintenance','facturation','conformite','vente','optimisation'],
+    },
   };
 
   let current = null;
@@ -95,9 +103,32 @@ const Profile = (() => {
     const hideSet = new Set(p.navHide || []);
     document.querySelectorAll('.nav-item').forEach(el => {
       const mod = el.dataset.module;
-      el.style.display = (mod && hideSet.has(mod)) ? 'none' : '';
+      if (mod && hideSet.has(mod)) {
+        el.style.display = 'none';
+        el.classList.add('hidden'); // Add both for safety
+      } else {
+        el.style.display = '';
+        el.classList.remove('hidden');
+      }
     });
 
+    /* Always hide specific section labels for super_admin */
+    document.querySelectorAll('.nav-section-label').forEach(el => {
+      const txt = el.textContent.trim().toLowerCase();
+      const forbidden = ['supervision', 'opérations', 'développement', 'supervision', 'operations', 'developpement'];
+      if (key === 'super_admin' && forbidden.includes(txt)) {
+        el.style.setProperty('display', 'none', 'important');
+      } else {
+        el.style.display = '';
+      }
+    });
+
+    /* Always hide specific section labels for super_admin */
+    const isSuperAdmin = (key === 'super_admin');
+    document.querySelectorAll('.nav-section-label').forEach(el => {
+      el.style.display = isSuperAdmin ? 'none' : '';
+    });
+    
     lucide.createIcons();
   }
 
