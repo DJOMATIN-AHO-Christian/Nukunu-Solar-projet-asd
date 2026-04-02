@@ -1,0 +1,17 @@
+# ════════════════════════════════════════════════════════════
+# Grafana — Dashboard Provider Configuration
+# Charge automatiquement tous les JSON dans ce dossier (BC03)
+# ════════════════════════════════════════════════════════════
+
+apiVersion: 1
+
+providers:
+  - name: "Nukunu Solar"
+    orgId: 1
+    folder: "Nukunu Solar"
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

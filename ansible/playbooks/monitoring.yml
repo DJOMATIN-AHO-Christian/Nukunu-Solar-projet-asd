@@ -1,0 +1,95 @@
+---
+# ════════════════════════════════════════════════════════════
+# Playbook Ansible — Déploiement Stack Monitoring
+# Bloc REAC : BC03 — CP9 (métriques) + CP10 (supervision)
+# Usage : ansible-playbook -i inventory/hosts.ini playbooks/monitoring.yml
+# ════════════════════════════════════════════════════════════
+
+- name: Déploiement Stack Monitoring — Nukunu Solar (BC03)
+  hosts: master
+  become: yes
+  vars:
+    monitoring_dir: /opt/nukunu/monitoring
+    grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') | default('NukunuGrafana2026!', true) }}"
+
+  tasks:
+    - name: Créer le répertoire de monitoring
+      file:
+        path: "{{ monitoring_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Copier la configuration Prometheus
+      copy:
+        src: "{{ playbook_dir }}/../docker/prometheus.yml"
+        dest: "{{ monitoring_dir }}/prometheus.yml"
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Copier les règles d'alerte Prometheus (BC03-CP9/CP10)
+      copy:
+        src: "{{ playbook_dir }}/../docker/prometheus/alerting_rules.yml"
+        dest: "{{ monitoring_dir }}/alerting_rules.yml"
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Copier le docker-compose monitoring
+      copy:
+        src: "{{ playbook_dir }}/../docker/docker-compose.monitoring.yml"
+        dest: "{{ monitoring_dir }}/docker-compose.monitoring.yml"
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Copier les provisioning Grafana (datasources + dashboards)
+      copy:
+        src: "{{ playbook_dir }}/../docker/grafana/"
+        dest: "{{ monitoring_dir }}/grafana/"
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Vérifier que le réseau Docker nukunu-network existe
+      shell: docker network inspect nukunu-network || docker network create nukunu-network
+      ignore_errors: yes
+
+    - name: Démarrer la stack monitoring (Prometheus + Grafana + Node Exporter)
+      shell: |
+        cd {{ monitoring_dir }}
+        GRAFANA_ADMIN_PASSWORD={{ grafana_admin_password }} \
+        docker compose -f docker-compose.monitoring.yml up -d --pull always
+      register: monitoring_up
+
+    - name: Vérifier que Prometheus répond
+      uri:
+        url: "http://localhost:9090/-/healthy"
+        status_code: 200
+      retries: 5
+      delay: 10
+      register: prometheus_health
+
+    - name: Vérifier que Grafana répond
+      uri:
+        url: "http://localhost:3000/api/health"
+        status_code: 200
+      retries: 5
+      delay: 10
+      register: grafana_health
+
+    - name: Vérifier les règles d'alerte chargées
+      uri:
+        url: "http://localhost:9090/api/v1/rules"
+        return_content: yes
+      register: prometheus_rules
+
+    - name: Afficher le nombre de règles actives
+      debug:
+        msg: >
+          ✅ Monitoring déployé ! Prometheus actif avec {{ prometheus_rules.json.data.groups | length }} groupe(s) de règles.
+          Grafana accessible sur http://{{ ansible_host }}:3000
+
+  handlers:
+    - name: restart monitoring
+      shell: |
+        cd {{ monitoring_dir }}
+        docker compose -f docker-compose.monitoring.yml restart

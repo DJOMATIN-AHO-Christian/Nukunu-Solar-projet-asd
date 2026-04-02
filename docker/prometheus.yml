@@ -2,6 +2,10 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+# ── Règles d'alerte (BC03 — CP9/CP10) ────────────────────────
+rule_files:
+  - "/etc/prometheus/alerting_rules.yml"
+
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
