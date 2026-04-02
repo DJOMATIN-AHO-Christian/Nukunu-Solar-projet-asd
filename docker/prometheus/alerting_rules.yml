@@ -1,0 +1,96 @@
+# ════════════════════════════════════════════════════════════
+# Règles d'Alerte Prometheus — Nukunu Solar (BC03 — CP9/CP10)
+# Métriques surveillées : CPU, Mémoire, Backend, Latence API
+# ════════════════════════════════════════════════════════════
+
+groups:
+  - name: nukunu.infrastructure
+    rules:
+
+      # ── CP9 : Métrique CPU avec seuil d'alerte ──────────────
+      - alert: HighCpuUsage
+        expr: >
+          100 * (1 - avg by(instance)(
+            rate(node_cpu_seconds_total{mode="idle"}[5m])
+          )) > 85
+        for: 5m
+        labels:
+          severity: warning
+          bloc: BC03
+          competence: CP9
+        annotations:
+          summary: "CPU élevé sur {{ $labels.instance }}"
+          description: >
+            L'utilisation CPU est de {{ humanize $value }}% depuis plus de 5 minutes.
+            Seuil critique : 85%. Investigate les processus en cours.
+
+      # ── CP9 : Métrique Mémoire avec seuil d'alerte ──────────
+      - alert: HighMemoryUsage
+        expr: >
+          100 * (1 - (
+            node_memory_MemAvailable_bytes /
+            node_memory_MemTotal_bytes
+          )) > 90
+        for: 5m
+        labels:
+          severity: critical
+          bloc: BC03
+          competence: CP9
+        annotations:
+          summary: "Mémoire critique sur {{ $labels.instance }}"
+          description: >
+            La mémoire disponible est en dessous de 10%.
+            Utilisation actuelle : {{ humanize $value }}%.
+            Risque de swapping ou OOM killer.
+
+  - name: nukunu.application
+    rules:
+
+      # ── CP10 : Supervision disponibilité backend ─────────────
+      - alert: NukunuBackendDown
+        expr: up{job="nukunu-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          bloc: BC03
+          competence: CP10
+        annotations:
+          summary: "Backend Nukunu Solar hors service"
+          description: >
+            L'instance {{ $labels.instance }} ne répond plus depuis 1 minute.
+            Vérifier le conteneur Docker : nukunu-app.
+            Impact : plateforme SaaS totalement indisponible.
+
+      # ── CP10 : Supervision latence API ───────────────────────
+      - alert: HighApiLatency
+        expr: >
+          histogram_quantile(0.95,
+            rate(http_request_duration_ms_bucket[5m])
+          ) > 500
+        for: 3m
+        labels:
+          severity: warning
+          bloc: BC03
+          competence: CP10
+        annotations:
+          summary: "Latence API élevée — P95 > 500ms"
+          description: >
+            La latence au 95e percentile est de {{ humanize $value }}ms.
+            Seuil : 500ms. Impact sur l'expérience utilisateur des tableaux de bord temps réel.
+
+      # ── CP10 : Taux d'erreur HTTP ────────────────────────────
+      - alert: HighErrorRate
+        expr: >
+          rate(http_request_duration_ms_count{code=~"5.."}[5m])
+          /
+          rate(http_request_duration_ms_count[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          bloc: BC03
+          competence: CP10
+        annotations:
+          summary: "Taux d'erreurs HTTP 5xx > 5%"
+          description: >
+            {{ humanize $value }}% des requêtes retournent une erreur serveur (5xx).
+            Vérifier les logs applicatifs : docker logs nukunu-app.
