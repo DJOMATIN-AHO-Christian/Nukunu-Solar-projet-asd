@@ -1,0 +1,12 @@
+# Fichiers sensibles Terraform — NE JAMAIS VERSIONNER
+*.tfvars
+!*.tfvars.example
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

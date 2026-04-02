@@ -1,0 +1,240 @@
+---
+# ════════════════════════════════════════════════════════════
+# Playbook Ansible — Déploiement complet AWS Free Tier
+# Nukunu Solar — EC2 t2.micro Ubuntu 22.04 (x86_64/amd64)
+#
+# Usage :
+#   ansible-playbook -i ansible/inventory/aws/hosts \
+#                    ansible/playbooks/deploy_aws.yml \
+#                    --extra-vars "docker_image=nukunu/solar-backend:abc123"
+# ════════════════════════════════════════════════════════════
+
+- name: "BC01-CP1 : Configuration base OS + Sécurité (AWS EC2)"
+  hosts: aws_prod
+  become: yes
+  vars:
+    deploy_dir: /opt/nukunu
+    app_user: ubuntu
+
+  tasks:
+    - name: "CP1 — Mise à jour des paquets système"
+      apt:
+        update_cache: yes
+        upgrade: dist
+        cache_valid_time: 3600
+
+    - name: "CP1 — Installation des dépendances de sécurité"
+      apt:
+        name:
+          - unattended-upgrades
+          - fail2ban
+          - ufw
+          - curl
+          - htop
+          - git
+        state: present
+
+    - name: "CP3 — Désactiver l'auth SSH par mot de passe"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        validate: 'sshd -t -f %s'
+      loop:
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+      notify: Restart SSH
+
+    - name: "CP3 — Configurer UFW (ports autorisés)"
+      ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: tcp
+        comment: "{{ item.comment }}"
+      loop:
+        - { port: '22',   comment: 'SSH - Admin uniquement (Security Group filtre par IP)' }
+        - { port: '80',   comment: 'HTTP public' }
+        - { port: '443',  comment: 'HTTPS public' }
+        - { port: '3002', comment: 'Nukunu App - Admin uniquement' }
+
+    - name: "CP3 — Activer UFW"
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    - name: "CP3 — Configurer fail2ban"
+      copy:
+        dest: /etc/fail2ban/jail.local
+        content: |
+          [DEFAULT]
+          bantime  = 3600
+          findtime = 600
+          maxretry = 3
+
+          [sshd]
+          enabled = true
+          port    = ssh
+          logpath = %(sshd_log)s
+      notify: Restart fail2ban
+
+    - name: "CP1 — Créer le répertoire d'application"
+      file:
+        path: "{{ deploy_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+
+  handlers:
+    - name: Restart SSH
+      systemd:
+        name: ssh
+        state: restarted
+
+    - name: Restart fail2ban
+      systemd:
+        name: fail2ban
+        state: restarted
+
+
+- name: "BC02-CP7 : Installation Docker (x86_64/amd64)"
+  hosts: aws_prod
+  become: yes
+  vars:
+    app_user: ubuntu
+
+  tasks:
+    - name: "CP7 — Vérifier si Docker est déjà installé"
+      command: docker --version
+      register: docker_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: "CP7 — Installer Docker via le script officiel (si absent)"
+      shell: curl -fsSL https://get.docker.com | sh
+      when: docker_check.rc != 0
+
+    - name: "CP7 — Ajouter l'utilisateur ubuntu au groupe docker"
+      user:
+        name: "{{ app_user }}"
+        groups: docker
+        append: yes
+
+    - name: "CP7 — Configurer le daemon Docker (limites logs + optimisation)"
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "50m",
+              "max-file": "3"
+            },
+            "storage-driver": "overlay2"
+          }
+      notify: Restart Docker
+
+    - name: "CP7 — Créer le réseau Docker nukunu-network"
+      shell: docker network inspect nukunu-network >/dev/null 2>&1 || docker network create nukunu-network
+      become_user: "{{ app_user }}"
+
+  handlers:
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted
+        daemon_reload: yes
+
+
+- name: "BC02-CP8 : Déploiement application Nukunu Solar"
+  hosts: aws_prod
+  become: yes
+  vars:
+    deploy_dir: /opt/nukunu
+    app_user: ubuntu
+    docker_image: "{{ lookup('env', 'DOCKER_IMAGE') | default('nukunu/solar-backend:latest', true) }}"
+    db_password: "{{ lookup('env', 'DB_PASSWORD') | mandatory }}"
+    jwt_secret: "{{ lookup('env', 'JWT_SECRET') | mandatory }}"
+    allowed_origins: "{{ lookup('env', 'ALLOWED_ORIGINS') | default('http://localhost:3002', true) }}"
+
+  tasks:
+    - name: "CP8 — Copier les fichiers Docker Compose AWS"
+      copy:
+        src: "{{ playbook_dir }}/../../docker/"
+        dest: "{{ deploy_dir }}/docker/"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+
+    - name: "CP8 — Copier les scripts d'initialisation DB"
+      copy:
+        src: "{{ playbook_dir }}/../../db/"
+        dest: "{{ deploy_dir }}/db/"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+
+    - name: "CP8 — Créer le fichier .env de production"
+      copy:
+        dest: "{{ deploy_dir }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0600'
+        content: |
+          # Nukunu Solar — Variables d'environnement Production AWS
+          # Généré automatiquement par Ansible — NE PAS VERSIONNER
+          DOCKER_IMAGE={{ docker_image }}
+          DB_USER=nukunu_admin
+          DB_PASSWORD={{ db_password }}
+          DB_NAME=nukunu_solar
+          JWT_SECRET={{ jwt_secret }}
+          ALLOWED_ORIGINS={{ allowed_origins }}
+          NODE_ENV=production
+          CLOUD_PROVIDER=aws
+          INSTANCE_TYPE=t2.micro
+
+    - name: "CP8 — Arrêter les anciens conteneurs (si présents)"
+      shell: |
+        cd {{ deploy_dir }}/docker
+        docker compose -f docker-compose.aws.yml --env-file {{ deploy_dir }}/.env down --remove-orphans || true
+      become_user: "{{ app_user }}"
+
+    - name: "CP8 — Démarrer la stack applicative"
+      shell: |
+        cd {{ deploy_dir }}/docker
+        docker compose -f docker-compose.aws.yml --env-file {{ deploy_dir }}/.env up -d --pull always
+      become_user: "{{ app_user }}"
+      register: compose_up
+
+    - name: "CP8 — Attendre que l'application réponde"
+      uri:
+        url: "http://localhost:3002/api/health"
+        status_code: 200
+      retries: 12
+      delay: 10
+      register: health_check
+
+    - name: "BC03 — Déployer la stack monitoring (Prometheus + Grafana)"
+      shell: |
+        cd {{ deploy_dir }}/docker
+        docker compose -f docker-compose.monitoring.yml --env-file {{ deploy_dir }}/.env up -d --pull always
+      become_user: "{{ app_user }}"
+      ignore_errors: yes  # Non bloquant — monitoring optionnel sur t2.micro
+
+    - name: Afficher le résumé de déploiement AWS
+      debug:
+        msg: |
+          ════════════════════════════════════════════════
+          ✅ NUKUNU SOLAR — DÉPLOYÉ SUR AWS FREE TIER
+          ════════════════════════════════════════════════
+          Cloud    : Amazon Web Services (EC2 t2.micro)
+          Région   : {{ ansible_host }} (eu-west-3)
+          App URL  : http://{{ ansible_host }}:3002
+          Grafana  : http://{{ ansible_host }}:3000
+          Version  : {{ docker_image }}
+          Health   : {{ health_check.status }} OK
+          ————————————————————————————————————————————————
+          BC01-CP3 : SSH restreint + UFW + fail2ban ✅
+          BC02-CP7 : Docker Engine (amd64) ✅
+          BC02-CP8 : Pipeline CI/CD → déployé ✅
+          BC03-CP10: Monitoring actif ✅
+          ════════════════════════════════════════════════

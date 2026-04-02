@@ -1,0 +1,10 @@
+# Valeurs d'exemple pour le déploiement AWS Free Tier
+# Copier ce fichier : cp terraform.tfvars.example terraform.tfvars
+# terraform.tfvars est dans .gitignore — ne JAMAIS versionner
+
+aws_region     = "eu-west-3"          # eu-west-1 (Irlande), eu-west-3 (Paris), us-east-1 (Virginie)
+instance_type  = "t2.micro"           # FREE TIER — ne pas changer
+admin_ip_cidr  = "0.0.0.0/0"          # ⚠️ REMPLACER par votre IP : ex "91.165.12.34/32"
+key_pair_name  = "nukunu-keypair"
+ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... votre_cle_publique"
+db_password    = ""                   # Laisser vide — injecté via variable d'env

@@ -1,0 +1,120 @@
+# ════════════════════════════════════════════════════════════
+# Docker Compose — AWS Free Tier (EC2 t2.micro)
+# RAM totale : 1 GB → Limites strictes par conteneur
+# Architecture : x86_64 (amd64) — PAS arm64
+#
+# Stratégie mémoire :
+#   OS Ubuntu          ~200 MB
+#   Docker daemon       ~50 MB
+#   PostgreSQL          ~150 MB  ← mem_limit: 200m
+#   Node.js app         ~150 MB  ← mem_limit: 250m
+#   Node Exporter        ~20 MB  ← mem_limit: 50m
+#   TOTAL               ~570 MB  (+ 2GB swap sur EBS)
+#
+# Prometheus + Grafana → lancés séparément via
+#   docker-compose.monitoring.yml (optionnel sur t2.micro)
+# ════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Base de données PostgreSQL ───────────────────────────
+  nukunu-db:
+    image: postgres:16-alpine      # alpine = image légère
+    container_name: nukunu-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-nukunu_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-nukunu_solar}
+      # Optimisation mémoire pour t2.micro
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    networks:
+      - nukunu-network
+    restart: on-failure:5
+    # Limites strictes pour t2.micro (1GB RAM total)
+    mem_limit: 200m
+    memswap_limit: 400m
+    cpus: "0.5"
+    # Healthcheck PostgreSQL
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-nukunu_admin} -d ${DB_NAME:-nukunu_solar}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Tuning PostgreSQL pour mémoire limitée
+    command: >
+      postgres
+        -c shared_buffers=64MB
+        -c effective_cache_size=128MB
+        -c work_mem=4MB
+        -c maintenance_work_mem=32MB
+        -c max_connections=30
+        -c wal_buffers=4MB
+        -c log_min_duration_statement=1000
+
+  # ── Application Backend Nukunu Solar ────────────────────
+  nukunu-app:
+    image: ${DOCKER_IMAGE:-nukunu/solar-backend:latest}
+    container_name: nukunu-app
+    depends_on:
+      nukunu-db:
+        condition: service_healthy
+    environment:
+      PORT: 3002
+      NODE_ENV: production
+      DB_HOST: nukunu-db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-nukunu_solar}
+      DB_USER: ${DB_USER:-nukunu_admin}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3002}
+      PROMETHEUS_URL: http://prometheus:9090
+    ports:
+      - "3002:3002"
+    networks:
+      - nukunu-network
+    restart: on-failure:5
+    mem_limit: 250m
+    memswap_limit: 500m
+    cpus: "0.5"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3002/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── Node Exporter — Métriques OS (BC03) ─────────────────
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: nukunu-node-exporter
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|run|host)($$|/)'
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - nukunu-network
+    restart: on-failure:3
+    mem_limit: 50m
+    memswap_limit: 100m
+    cpus: "0.1"
+    pid: host
+
+networks:
+  nukunu-network:
+    driver: bridge
+    name: nukunu-network
+
+volumes:
+  pgdata:
+    driver: local
