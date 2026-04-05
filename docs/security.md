@@ -20,6 +20,11 @@ Le fichier [`terraform/main.tf`](../terraform/main.tf) définit des règles d'ac
 > [!IMPORTANT]
 > Le port SSH **n'est pas ouvert sur `0.0.0.0/0`**. La variable `admin_ip_cidr` est définie dans `terraform.tfvars` (non versionné) et injectée au provisionnement. Ce fichier ne contient **aucune donnée sensible**.
 
+### Résilience et Base de Données
+
+Actuellement, l'architecture d'hébergement est de type "Single Node" ce qui implique que la base de données PostgreSQL fonctionne sur la même instance que l'application et partage le même réseau.
+Cependant, son port (5432) n'est **jamais exposé sur internet**. L'accès est strictement cantonné au réseau conteneurisé Docker/K3s et protégé au niveau OS/Cloud par UFW et les Security Lists qui rejettent tout accès externe sur ce port. En phase de production Entreprise, la BDD sera isolée dans un CIDR de sous-réseau privé.
+
 ### Paramétrage de la variable SSH
 
 ```hcl

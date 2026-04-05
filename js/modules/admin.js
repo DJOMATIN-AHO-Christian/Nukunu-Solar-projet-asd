@@ -4,6 +4,18 @@
 
 const ModuleAdmin = (() => {
   let _currentTab = 'dashboard';
+  let _searchDismissBound = false;
+
+  function _bindSearchDismiss() {
+    if (_searchDismissBound) return;
+    _searchDismissBound = true;
+    document.addEventListener('click', (e) => {
+      const overlay = document.getElementById('search-results-overlay');
+      if (overlay && !overlay.contains(e.target) && e.target.id !== 'admin-global-search') {
+        overlay.style.display = 'none';
+      }
+    });
+  }
 
   async function render() {
     const view = document.getElementById('module-admin');
@@ -20,7 +32,7 @@ const ModuleAdmin = (() => {
           <i data-lucide="search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; color:var(--text-muted)"></i>
           <input type="text" id="admin-global-search" class="form-input" placeholder="Rechercher utilisateur ou ticket..." 
                  style="padding-left:38px" onkeyup="ModuleAdmin.handleSearch(event)">
-          <div id="search-results-overlay" class="card" style="display:none; position:absolute; top:48px; left:0; right:0; z-index:100; max-height:450px; overflow-y:auto; padding:var(--sp-2); box-shadow:var(--shadow-lg); border:1px solid var(--border-active)">
+          <div id="search-results-overlay" class="card" style="display:none; position:absolute; top:48px; left:0; right:0; z-index:100; max-height:450px; overflow-y:auto; padding:var(--sp-2); box-shadow:var(--shadow-lg); border:1px solid var(--border-accent)">
             <!-- Results -->
           </div>
         </div>
@@ -60,13 +72,7 @@ const ModuleAdmin = (() => {
 
     lucide.createIcons();
 
-    // Event listener for search overlay
-    document.addEventListener('click', (e) => {
-      const overlay = document.getElementById('search-results-overlay');
-      if (overlay && !overlay.contains(e.target) && e.target.id !== 'admin-global-search') {
-        overlay.style.display = 'none';
-      }
-    });
+    _bindSearchDismiss();
   }
 
   async function handleSearch(e) {
@@ -122,21 +128,14 @@ const ModuleAdmin = (() => {
     if (!confirm('Voulez-vous vraiment vous connecter en tant que cet utilisateur ?')) return;
     
     try {
-      const res = await fetch(`${App.getApiBase()}/api/admin/impersonate/${id}`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${window.NukunuStore.get('nukunu_token')}`
-        }
-      });
-      if (!res.ok) throw new Error('Échec de l\'impersonation');
-      const { token, user } = await res.json();
-      
-      // Swap tokens and reload
-      window.NukunuStore.set('nukunu_token', token);
-      window.NukunuStore.set('nukunu_user', JSON.stringify(user));
-      
+      const { token, user } = await _api(`/api/admin/impersonate/${id}`, { method: 'POST' });
+      App.applyAuthenticatedSession(user, token, { remember: window.NukunuStore.isRemembered() });
+      await Promise.all([
+        NukunuData.refreshDashboardData(),
+        App.refreshSystemState(),
+      ]);
       App.toast(`Impersonation active : ${user.name}`, 'success');
-      setTimeout(() => window.location.reload(), 1000);
+      App.navigateTo(user.role === 'super_admin' ? 'admin' : 'monitoring');
     } catch (err) {
       App.toast(err.message, 'error');
     }
@@ -221,6 +220,16 @@ const ModuleAdmin = (() => {
   }
 
   async function _loadTools() {
+    const flags = await _api('/api/admin/system-flags').catch(() => ({
+      maintenance: { enabled: false },
+      broadcast: { active: false },
+      sessions: { revokedAfter: null }
+    }));
+    const maintenanceEnabled = Boolean(flags.maintenance?.enabled);
+    const broadcastActive = Boolean(flags.broadcast?.active);
+    const lastLogoutAll = flags.sessions?.revokedAfter
+      ? new Date(flags.sessions.revokedAfter).toLocaleString('fr-FR')
+      : 'Jamais';
     const container = document.getElementById('admin-content');
     container.innerHTML = `
       <div class="section-grid section-grid--2" style="gap:var(--sp-4)">
@@ -231,19 +240,22 @@ const ModuleAdmin = (() => {
           </p>
           <div class="form-group" style="margin-bottom:var(--sp-3)">
             <label class="form-label">Titre de l'annonce</label>
-            <input type="text" id="tool-broadcast-title" class="form-input" placeholder="Maintenance prévue...">
+            <input type="text" id="tool-broadcast-title" class="form-input" placeholder="Maintenance prévue..." value="${flags.broadcast?.title || ''}">
           </div>
           <div class="form-group" style="margin-bottom:var(--sp-3)">
             <label class="form-label">Message</label>
-            <textarea id="tool-broadcast-message" class="form-input" style="min-height:80px" placeholder="Le système sera indisponible de 2h à 4h..."></textarea>
+            <textarea id="tool-broadcast-message" class="form-input" style="min-height:80px" placeholder="Le système sera indisponible de 2h à 4h...">${flags.broadcast?.message || ''}</textarea>
           </div>
           <div class="form-group" style="margin-bottom:var(--sp-4)">
             <label class="form-label">Niveau d'alerte</label>
             <select id="tool-broadcast-level" class="form-input">
-              <option value="info">Information (Bleu)</option>
-              <option value="warning">Avertissement (Orange)</option>
-              <option value="error">Critique (Rouge)</option>
+              <option value="info" ${flags.broadcast?.level === 'info' ? 'selected' : ''}>Information (Bleu)</option>
+              <option value="warning" ${flags.broadcast?.level === 'warning' ? 'selected' : ''}>Avertissement (Orange)</option>
+              <option value="error" ${flags.broadcast?.level === 'error' ? 'selected' : ''}>Critique (Rouge)</option>
             </select>
+          </div>
+          <div class="form-hint" style="margin-bottom:var(--sp-4)">
+            Statut actuel: ${broadcastActive ? 'diffusion active visible sur le SaaS' : 'aucune diffusion active'}
           </div>
           <button class="btn btn-primary" onclick="ModuleAdmin.submitBroadcast()" style="width:100%">
             <i data-lucide="send"></i> Diffuser le message
@@ -259,20 +271,21 @@ const ModuleAdmin = (() => {
           <div style="padding:var(--sp-4); background:var(--bg-hover); border-radius:var(--r-base); border:1px dashed var(--border); display:flex; align-items:center; justify-content:space-between">
             <div>
               <div style="font-weight:600">État de la Maintenance</div>
-              <div id="maintenance-status-label" style="font-size:var(--text-xs); color:var(--text-muted)">Désactivé</div>
+              <div id="maintenance-status-label" style="font-size:var(--text-xs); color:var(--text-muted)">${maintenanceEnabled ? 'Activé' : 'Désactivé'}</div>
             </div>
-            <button id="btn-toggle-maintenance" class="btn btn-ghost" onclick="ModuleAdmin.toggleMaintenance(true)">
-              Activer
+            <button id="btn-toggle-maintenance" class="btn ${maintenanceEnabled ? 'btn-danger' : 'btn-ghost'}" onclick="ModuleAdmin.toggleMaintenance(${maintenanceEnabled ? 'false' : 'true'})">
+              ${maintenanceEnabled ? 'Désactiver' : 'Activer'}
             </button>
           </div>
 
           <div style="margin-top:var(--sp-6)">
             <h4 style="margin-bottom:var(--sp-2)">Actions de secours</h4>
+            <div class="form-hint" style="margin-bottom:var(--sp-3)">Dernière réinitialisation globale des sessions: ${lastLogoutAll}</div>
             <div style="display:flex; flex-direction:column; gap:var(--sp-2)">
-              <button class="btn btn-sm btn-ghost" onclick="App.toast('Cache purgé!', 'success')" style="justify-content:flex-start">
-                <i data-lucide="refresh-cw"></i> Forcer la purge du cache frontend
+              <button class="btn btn-sm btn-ghost" onclick="ModuleAdmin.clearFrontendCache()" style="justify-content:flex-start">
+                <i data-lucide="refresh-cw"></i> Purger le cache frontend local
               </button>
-              <button class="btn btn-sm btn-ghost" onclick="App.toast('Sessions nettoyées!', 'info')" style="justify-content:flex-start">
+              <button class="btn btn-sm btn-ghost" onclick="ModuleAdmin.logoutAllUsers()" style="justify-content:flex-start">
                 <i data-lucide="log-out"></i> Déconnecter tous les utilisateurs
               </button>
             </div>
@@ -291,15 +304,11 @@ const ModuleAdmin = (() => {
     if (!title || !message) return App.toast('Titre et message requis', 'warning');
 
     try {
-      const res = await fetch(`${App.getApiBase()}/api/admin/broadcast`, {
+      await _api('/api/admin/broadcast', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${window.NukunuStore.get('nukunu_token')}`
-        },
         body: JSON.stringify({ title, message, level })
       });
-      if (!res.ok) throw new Error('Échec de la diffusion');
+      await App.refreshSystemState();
       App.toast('Message diffusé à tous les utilisateurs !', 'success');
       document.getElementById('tool-broadcast-title').value = '';
       document.getElementById('tool-broadcast-message').value = '';
@@ -313,19 +322,43 @@ const ModuleAdmin = (() => {
     if (!confirm(`Voulez-vous vraiment ${action} le mode maintenance ?`)) return;
 
     try {
-      const res = await fetch(`${App.getApiBase()}/api/admin/maintenance`, {
+      const data = await _api('/api/admin/maintenance', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${window.NukunuStore.get('nukunu_token')}`
-        },
         body: JSON.stringify({ enabled })
       });
-      if (!res.ok) throw new Error('Erreur de basculement');
-      const data = await res.json();
-      
+      await App.refreshSystemState();
       App.toast(data.message, 'info');
       _loadTools(); // Reload to update UI
+    } catch (err) {
+      App.toast(err.message, 'error');
+    }
+  }
+
+  async function clearFrontendCache() {
+    NukunuData.clearLocalCache();
+    await Promise.allSettled([
+      NukunuData.refreshDashboardData(),
+      App.refreshSystemState(),
+    ]);
+    App.toast('Cache frontend local purgé et rechargé.', 'success');
+    if (_currentTab === 'tools') _loadTools();
+  }
+
+  async function logoutAllUsers() {
+    if (!confirm('Réinitialiser toutes les sessions utilisateurs et conserver uniquement votre session administrateur ?')) return;
+    try {
+      const data = await _api('/api/admin/logout-all', { method: 'POST' });
+      if (data.token) {
+        App.applyAuthenticatedSession({
+          id: window.NukunuStore.get('nukunu_user_id'),
+          name: window.NukunuStore.get('nukunu_user_name'),
+          email: window.NukunuStore.get('nukunu_user_email'),
+          role: window.NukunuStore.get('nukunu_user_role'),
+        }, data.token, { remember: window.NukunuStore.isRemembered() });
+      }
+      await App.refreshSystemState();
+      App.toast(data.message, 'success');
+      if (_currentTab === 'tools') _loadTools();
     } catch (err) {
       App.toast(err.message, 'error');
     }
@@ -458,6 +491,8 @@ const ModuleAdmin = (() => {
   }
 
   async function _loadSupervision() {
+    const grafanaUrl = _serviceUrl(3000);
+    const prometheusUrl = _serviceUrl(9090);
     const container = document.getElementById('admin-content');
     container.innerHTML = `
       <div class="section-grid section-grid--3" style="gap:var(--sp-4); margin-bottom:var(--sp-4)">
@@ -484,15 +519,15 @@ const ModuleAdmin = (() => {
           <div style="font-size:12px; color:var(--text-muted)">Mise à jour automatique (30s)</div>
         </div>
         <div class="section-grid section-grid--3" style="gap:var(--sp-4)">
-          <div style="background:rgba(0,0,0,0.1); padding:var(--sp-4); border-radius:var(--rd-lg)">
+          <div style="background:rgba(0,0,0,0.1); padding:var(--sp-4); border-radius:var(--r-lg)">
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:var(--sp-2)">Utilisation CPU (%)</div>
             <canvas id="cpu-chart" height="150"></canvas>
           </div>
-          <div style="background:rgba(0,0,0,0.1); padding:var(--sp-4); border-radius:var(--rd-lg)">
+          <div style="background:rgba(0,0,0,0.1); padding:var(--sp-4); border-radius:var(--r-lg)">
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:var(--sp-2)">Utilisation Mémoire (%)</div>
             <canvas id="memory-chart" height="150"></canvas>
           </div>
-          <div style="background:rgba(0,0,0,0.1); padding:var(--sp-4); border-radius:var(--rd-lg)">
+          <div style="background:rgba(0,0,0,0.1); padding:var(--sp-4); border-radius:var(--r-lg)">
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:var(--sp-2)">Requêtes / sec</div>
             <canvas id="request-chart" height="150"></canvas>
           </div>
@@ -509,10 +544,10 @@ const ModuleAdmin = (() => {
           Utilisez les accès administrateur pour consulter les dashboards détaillés.
         </p>
         <div style="display:flex; justify-content:center; gap:var(--sp-4)">
-          <a href="http://localhost:3000" target="_blank" class="btn btn-primary">
+          <a href="${grafanaUrl}" target="_blank" rel="noreferrer" class="btn btn-primary">
             <i data-lucide="external-link"></i> Ouvrir Grafana
           </a>
-          <a href="http://localhost:9090" target="_blank" class="btn btn-ghost">
+          <a href="${prometheusUrl}" target="_blank" rel="noreferrer" class="btn btn-ghost">
             <i data-lucide="database"></i> Cibles Prometheus
           </a>
         </div>
@@ -606,17 +641,10 @@ const ModuleAdmin = (() => {
     };
 
     try {
-      const res = await fetch(`${App.getApiBase()}/api/admin/users`, {
+      await _api('/api/admin/users', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${window.NukunuStore.get('nukunu_token')}`
-        },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur lors de la création');
-
       App.toast('Utilisateur créé avec succès !', 'success');
       App.closeModal();
       if (_currentTab === 'users') _loadUsers();
@@ -629,11 +657,7 @@ const ModuleAdmin = (() => {
   async function deleteUser(id, email) {
     if (!confirm(`Supprimer définitivement l'utilisateur ${email} ?`)) return;
     try {
-      const res = await fetch(`${App.getApiBase()}/api/admin/users/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${window.NukunuStore.get('nukunu_token')}` }
-      });
-      if (!res.ok) throw new Error('Erreur lors de la suppression');
+      await _api(`/api/admin/users/${id}`, { method: 'DELETE' });
       App.toast('Utilisateur supprimé', 'success');
       if (_currentTab === 'users') _loadUsers();
       else if (_currentTab === 'dashboard') _loadDashboard();
@@ -751,11 +775,28 @@ const ModuleAdmin = (() => {
     }
   }
 
-  function _api(path) {
+  function _serviceUrl(port) {
+    const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
+    const host = window.location.hostname || 'localhost';
+    return `${protocol}://${host}:${port}`;
+  }
+
+  function _api(path, options = {}) {
     const token = window.NukunuStore.get('nukunu_token');
     return fetch(`${App.getApiBase()}${path}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    }).then(res => res.json());
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...(options.headers || {})
+      }
+    }).then(async res => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur API admin');
+      }
+      return data;
+    });
   }
   function _kpiCard(label, val, icon, col) {
     return `
@@ -771,5 +812,17 @@ const ModuleAdmin = (() => {
     return { 'super_admin':'blue', 'installateur':'amber', 'fonds':'blue', 'industriel':'green', 'particulier':'green' }[role] || 'gray';
   }
 
-  return { render, setTab, openCreateUserModal, submitCreateUser, deleteUser, submitBroadcast, toggleMaintenance, handleSearch, impersonateUser };
+  return {
+    render,
+    setTab,
+    openCreateUserModal,
+    submitCreateUser,
+    deleteUser,
+    submitBroadcast,
+    toggleMaintenance,
+    clearFrontendCache,
+    logoutAllUsers,
+    handleSearch,
+    impersonateUser
+  };
 })();

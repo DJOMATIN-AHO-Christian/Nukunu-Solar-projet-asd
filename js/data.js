@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
    NUKUNU SOLAR — DATA.JS
-   Mock data sets + lightweight local persistence for the demo app
+   Local cache, scoped persistence and API-backed dashboard state
 ═══════════════════════════════════════════════════════════ */
 
 window.NukunuStore = window.NukunuStore || (() => {
@@ -349,6 +349,14 @@ const NukunuData = (() => {
 
   function _setSettingsState(value) {
     _setStateSlice(STORAGE_KEYS.settings, value);
+  }
+
+  function clearLocalCache() {
+    Object.values(STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(_scopedKey(key));
+      sessionStorage.removeItem(_scopedKey(key));
+    });
+    _syncWarnings.clear();
   }
 
   function getDashboardData() {
@@ -995,6 +1003,7 @@ const NukunuData = (() => {
     getLandingMetrics,
     getNotifications,
     getNotificationSummary,
+    clearLocalCache,
     markNotificationRead,
     dismissNotification,
     markAllNotificationsRead,

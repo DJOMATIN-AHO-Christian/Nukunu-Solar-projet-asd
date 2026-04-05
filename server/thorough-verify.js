@@ -7,7 +7,7 @@ function request(options, body = null) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try { resolve({ status: res.statusCode, data: JSON.parse(data || '{}') }); }
-        catch (e) { resolve({ status: res.statusCode, data: data }); }
+        catch (_e) { resolve({ status: res.statusCode, data: data }); }
       });
     });
     req.on('error', reject);

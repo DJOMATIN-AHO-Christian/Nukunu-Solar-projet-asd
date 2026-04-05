@@ -25,6 +25,36 @@ const isAdmin = (req, res, next) => {
 
 const os = require('os');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const ADMIN_CREATABLE_ROLES = new Set(['installateur', 'fonds', 'industriel', 'particulier', 'super_admin']);
+
+function normalizeText(value) {
+  return typeof value === 'string' ? value.trim() : value;
+}
+
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function ensurePasswordStrength(password) {
+  return typeof password === 'string' && password.length >= 8;
+}
+
+async function ensureRoleRecord(userId, role) {
+  if (role === 'installateur') {
+    await pool.query('INSERT INTO role_installateur (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING', [userId]);
+  } else if (role === 'fonds') {
+    await pool.query('INSERT INTO role_fonds (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING', [userId]);
+  } else if (role === 'industriel') {
+    await pool.query('INSERT INTO role_industriel (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING', [userId]);
+  } else if (role === 'particulier') {
+    await pool.query('INSERT INTO role_particulier (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING', [userId]);
+  }
+}
 
 const getAdminStats = async (req, res) => {
   try {
@@ -70,25 +100,43 @@ const getSystemInfo = (req, res) => {
 };
 
 const createUser = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const name = normalizeText(req.body?.name);
+  const email = normalizeEmail(req.body?.email);
+  const password = req.body?.password;
+  const role = normalizeText(req.body?.role);
   if (!name || !email || !password || !role) {
     return res.status(400).json({ error: 'Tous les champs sont requis.' });
   }
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: 'Adresse email invalide.' });
+  }
+  if (!ensurePasswordStrength(password)) {
+    return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères.' });
+  }
+  if (!ADMIN_CREATABLE_ROLES.has(role)) {
+    return res.status(400).json({ error: 'Rôle invalide.' });
+  }
 
   try {
+    await pool.query('BEGIN');
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
       [name, email, hashedPassword, role]
     );
+    const user = result.rows[0];
+
+    await ensureRoleRecord(user.id, role);
 
     await pool.query('INSERT INTO audit_logs (user_id, action) VALUES ($1, $2)', [
       req.user.id,
       `Création utilisateur: ${email} (${role})`
     ]);
 
-    res.status(201).json({ user: result.rows[0], message: 'Utilisateur créé.' });
+    await pool.query('COMMIT');
+    res.status(201).json({ user, message: 'Utilisateur créé.' });
   } catch (err) {
+    await pool.query('ROLLBACK');
     console.error(err);
     if (err.code === '23505') return res.status(400).json({ error: 'Email déjà utilisé.' });
     res.status(500).json({ error: 'Erreur lors de la création.' });
@@ -111,7 +159,7 @@ const deleteUser = async (req, res) => {
     ]);
 
     res.json({ message: 'Utilisateur supprimé avec succès.' });
-  } catch (err) {
+  } catch (_err) {
     res.status(500).json({ error: 'Erreur lors de la suppression.' });
   }
 };
@@ -154,14 +202,6 @@ const broadcastMessage = async (req, res) => {
   if (!title || !message) return res.status(400).json({ error: 'Titre et message requis.' });
 
   try {
-    // Generate a unique ID for this notification batch
-    const batchId = `broadcast_${Date.now()}`;
-    
-    // In this simplified system, we "broadcast" by adding to a global notifications list or 
-    // by inserting into a user_settings pattern that implies a broadcast.
-    // However, for this project, we'll implement it by inserting a specific audit log 
-    // that the frontend can pick up as a "Global Alert".
-    
     await pool.query(
       "INSERT INTO system_config (key, value) VALUES ('global_broadcast', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()",
       [JSON.stringify({ title, message, level, active: true, created_at: new Date().toISOString() })]
@@ -173,7 +213,7 @@ const broadcastMessage = async (req, res) => {
     ]);
 
     res.json({ message: 'Message diffusé avec succès.' });
-  } catch (err) {
+  } catch (_err) {
     res.status(500).json({ error: 'Erreur lors de la diffusion.' });
   }
 };
@@ -192,7 +232,7 @@ const toggleMaintenance = async (req, res) => {
     ]);
 
     res.json({ enabled: Boolean(enabled), message: `Maintenance ${enabled ? 'activée' : 'désactivée'}.` });
-  } catch (err) {
+  } catch (_err) {
     res.status(500).json({ error: 'Erreur lors du basculement de la maintenance.' });
   }
 };
@@ -207,7 +247,7 @@ const impersonateUser = async (req, res) => {
     const impersonationToken = jwt.sign(
       { id: user.id, email: user.email, role: user.role, impersonatedBy: req.user.id },
       process.env.JWT_SECRET || 'local_docker_secret_change_me',
-      { expiresIn: '1h' }
+      { expiresIn: '12h' }
     );
 
     await pool.query('INSERT INTO audit_logs (user_id, action) VALUES ($1, $2)', [
@@ -216,8 +256,62 @@ const impersonateUser = async (req, res) => {
     ]);
 
     res.json({ token: impersonationToken, user });
-  } catch (err) {
+  } catch (_err) {
     res.status(500).json({ error: 'Échec de l\'impersonation.' });
+  }
+};
+
+const getSystemFlags = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT key, value
+       FROM system_config
+       WHERE key = ANY($1::text[])`,
+      [['maintenance_mode', 'global_broadcast', 'session_revoked_after']]
+    );
+    const flags = result.rows.reduce((acc, row) => {
+      acc[row.key] = row.value || {};
+      return acc;
+    }, {});
+
+    res.json({
+      maintenance: flags.maintenance_mode || { enabled: false },
+      broadcast: flags.global_broadcast || { active: false },
+      sessions: {
+        revokedAfter: flags.session_revoked_after?.timestamp || null,
+      },
+    });
+  } catch (_err) {
+    res.status(500).json({ error: 'Erreur lors du chargement des paramètres système.' });
+  }
+};
+
+const logoutAllUsers = async (req, res) => {
+  try {
+    const timestamp = new Date().toISOString();
+    await pool.query(
+      "INSERT INTO system_config (key, value) VALUES ('session_revoked_after', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()",
+      [JSON.stringify({ timestamp, updated_by: req.user.id })]
+    );
+
+    await pool.query('INSERT INTO audit_logs (user_id, action) VALUES ($1, $2)', [
+      req.user.id,
+      'Réinitialisation globale des sessions utilisateur'
+    ]);
+
+    const keepaliveToken = jwt.sign(
+      { id: req.user.id, email: req.user.email, role: req.user.role },
+      process.env.JWT_SECRET || 'local_docker_secret_change_me',
+      { expiresIn: '12h' }
+    );
+
+    res.json({
+      message: 'Toutes les sessions utilisateurs ont été réinitialisées.',
+      timestamp,
+      token: keepaliveToken,
+    });
+  } catch (_err) {
+    res.status(500).json({ error: 'Erreur lors de la réinitialisation des sessions.' });
   }
 };
 
@@ -291,7 +385,7 @@ const globalSearch = async (req, res) => {
       users: users.rows,
       tickets: tickets.rows
     });
-  } catch (err) {
+  } catch (_err) {
     res.status(500).json({ error: 'Erreur de recherche.' });
   }
 };
@@ -310,5 +404,7 @@ module.exports = {
   impersonateUser,
   getDatabaseHealth,
   getPrometheusMetrics,
-  globalSearch
+  globalSearch,
+  getSystemFlags,
+  logoutAllUsers
 };

@@ -10,6 +10,11 @@ const App = (() => {
   let _clockInterval = null;
   let _charts = {};
   let _eventsBound = false;
+  let _systemState = {
+    maintenance: { enabled: false },
+    broadcast: { active: false },
+    sessions: null,
+  };
   let _apiBase = window.NUKUNU_API_BASE
     || localStorage.getItem('nukunu_api_base')
     || 'http://localhost:3002';
@@ -45,6 +50,30 @@ const App = (() => {
 
   function getApiBase() {
     return _apiBase;
+  }
+
+  function _applyAuthenticatedSession(user, token, options = {}) {
+    const remember = options.remember ?? window.NukunuStore.isRemembered();
+    window.NukunuStore.setAuthState({
+      nukunu_session: 'true',
+      nukunu_token: token,
+      nukunu_user_name: user.name,
+      nukunu_user_email: user.email,
+      nukunu_profile: user.role,
+      nukunu_user_role: user.role,
+      nukunu_user_id: String(user.id),
+    }, remember);
+
+    Profile.activate(user.role, false);
+
+    const adminLink = document.getElementById('nav-admin-link');
+    if (adminLink) {
+      adminLink.classList.toggle('hidden', user.role !== 'super_admin');
+    }
+
+    _syncUserUI();
+    _updateGlobalBadges();
+    return user;
   }
 
   /* ── INIT ────────────────────────────────────────── */
@@ -146,17 +175,7 @@ const App = (() => {
             if (!res.ok) throw new Error(data.error || 'Erreur inconnue');
 
             const remember = isRegister ? true : Boolean(document.getElementById('login-remember')?.checked);
-            window.NukunuStore.setAuthState({
-              nukunu_session: 'true',
-              nukunu_token: data.token,
-              nukunu_user_name: data.user.name,
-              nukunu_user_email: data.user.email,
-              nukunu_profile: data.user.role,
-              nukunu_user_role: data.user.role,
-              nukunu_user_id: String(data.user.id),
-            }, remember);
-
-            Profile.activate(data.user.role, false);
+            _applyAuthenticatedSession(data.user, data.token, { remember });
             if (isRegister) {
               _showOnboarding(data.user.role);
             } else {
@@ -254,7 +273,17 @@ const App = (() => {
     document.getElementById('onboarding-overlay').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     _bindAppEvents();
-    await NukunuData.refreshDashboardData();
+    await Promise.all([
+      NukunuData.refreshDashboardData(),
+      _refreshSystemState(),
+    ]);
+    if (_systemState.maintenance?.enabled && role !== 'super_admin') {
+      window.NukunuStore.clearAuth();
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('landing-page')?.classList.remove('hidden');
+      toast('La plateforme est actuellement en maintenance. Merci de revenir un peu plus tard.', 'warning', 5000);
+      return;
+    }
     _syncUserUI();
     _updateGlobalBadges();
     
@@ -426,6 +455,84 @@ const App = (() => {
     lucide.createIcons();
   }
 
+  async function _refreshSystemState() {
+    const token = window.NukunuStore.get('nukunu_token');
+    if (!token) {
+      _systemState = { maintenance: { enabled: false }, broadcast: { active: false }, sessions: null };
+      _renderSystemBanner();
+      return _systemState;
+    }
+
+    try {
+      const response = await fetch(`${getApiBase()}/api/system/state`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'État plateforme indisponible');
+      _systemState = {
+        maintenance: data.maintenance || { enabled: false },
+        broadcast: data.broadcast || { active: false },
+        sessions: data.sessions || null,
+      };
+    } catch (_error) {
+      _systemState = { maintenance: { enabled: false }, broadcast: { active: false }, sessions: null };
+    }
+
+    _renderSystemBanner();
+    return _systemState;
+  }
+
+  function _renderSystemBanner() {
+    const banner = document.getElementById('system-banner');
+    if (!banner) return;
+
+    const items = [];
+    const role = window.NukunuStore.get('nukunu_user_role');
+    const broadcast = _systemState.broadcast || {};
+    const maintenance = _systemState.maintenance || {};
+    const level = ['warning', 'error', 'critical'].includes(broadcast.level) ? broadcast.level : 'info';
+    const levelIcon = {
+      info: 'megaphone',
+      warning: 'triangle-alert',
+      error: 'shield-alert',
+      critical: 'shield-alert',
+    };
+
+    if (broadcast.active && (broadcast.title || broadcast.message)) {
+      items.push(`
+        <div class="system-banner__item system-banner__item--${level}">
+          <i data-lucide="${levelIcon[level] || 'megaphone'}"></i>
+          <div class="system-banner__content">
+            <strong>${broadcast.title || 'Annonce plateforme'}</strong>
+            <span>${broadcast.message || ''}</span>
+          </div>
+        </div>
+      `);
+    }
+
+    if (maintenance.enabled && role === 'super_admin') {
+      items.push(`
+        <div class="system-banner__item system-banner__item--warning">
+          <i data-lucide="shield-check"></i>
+          <div class="system-banner__content">
+            <strong>Mode maintenance actif</strong>
+            <span>Les comptes non administrateurs sont temporairement bloqués.</span>
+          </div>
+        </div>
+      `);
+    }
+
+    if (!items.length) {
+      banner.classList.add('hidden');
+      banner.innerHTML = '';
+      return;
+    }
+
+    banner.classList.remove('hidden');
+    banner.innerHTML = items.join('');
+    lucide.createIcons();
+  }
+
   function _updateGlobalBadges() {
     const profile = Profile.get() || window.NukunuStore.get('nukunu_user_role');
     const openTickets = NukunuData.getTickets().filter(ticket => ticket.status !== 'done').length;
@@ -484,6 +591,9 @@ const App = (() => {
       document.getElementById('auth-overlay')?.classList.add('hidden');
       document.getElementById('onboarding-overlay')?.classList.add('hidden');
       document.getElementById('landing-page')?.classList.remove('hidden');
+      document.getElementById('system-banner')?.classList.add('hidden');
+      document.getElementById('system-banner')?.replaceChildren();
+      _systemState = { maintenance: { enabled: false }, broadcast: { active: false }, sessions: null };
       _currentModule = 'monitoring';
       destroyCharts();
       closeModal();
@@ -496,6 +606,11 @@ const App = (() => {
     const landing = document.getElementById('landing-page');
     const auth = document.getElementById('auth-overlay');
     const card = document.getElementById('auth-card');
+    if (auth) {
+      auth.style.transition = '';
+      auth.style.opacity = '1';
+      auth.style.transform = 'none';
+    }
     if (card?.parentElement) {
       card.parentElement.classList.toggle('auth-mode-register', mode === 'register');
     }
@@ -669,16 +784,7 @@ const App = (() => {
       if (!res.ok) throw new Error('Session invalide');
       const data = await res.json().catch(() => ({}));
       const remember = window.NukunuStore.isRemembered();
-      window.NukunuStore.setAuthState({
-        nukunu_session: 'true',
-        nukunu_token: token,
-        nukunu_user_name: data.user.name,
-        nukunu_user_email: data.user.email,
-        nukunu_user_role: data.user.role,
-        nukunu_user_id: String(data.user.id),
-        nukunu_profile: data.user.role,
-      }, remember);
-      Profile.activate(data.user.role, false);
+      _applyAuthenticatedSession(data.user, token, { remember });
       return true;
     } catch (err) {
       window.NukunuStore.clearAuth();
@@ -887,6 +993,8 @@ const App = (() => {
     openInfo,
     showAuth,
     navigateTo: _navigateTo,
+    applyAuthenticatedSession: _applyAuthenticatedSession,
+    refreshSystemState: _refreshSystemState,
     openPrintDocument,
     openMailClient,
     readFileAsDataUrl,

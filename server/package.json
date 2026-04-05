@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "seed": "node seed.js",
-    "test": "node --check server.js && node --check live-data.js && node --check seed.js && node --check ../js/app.js && node --check ../js/data.js && node --check ../js/profile.js && node --check ../js/modules/account.js && node --check ../js/modules/conformite.js && node --check ../js/modules/facturation.js && node --check ../js/modules/maintenance.js && node --check ../js/modules/monitoring.js && node --check ../js/modules/optimisation.js && node --check ../js/modules/reporting.js && node --check ../js/modules/vente.js",
+    "test": "node --test tests/api.test.js",
     "lint": "eslint ."
   },
   "keywords": [],
