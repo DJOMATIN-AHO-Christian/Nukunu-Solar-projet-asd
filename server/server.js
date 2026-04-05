@@ -34,7 +34,7 @@ const ALLOWED_SETTINGS_KEYS = new Set([
   'notification_state',
   'activity_log',
 ]);
-const FRONTEND_ROOT = path.join(__dirname, '..');
+const FRONTEND_ROOT = path.join(__dirname, '../client');
 const { getLiveHealthSummary, decorateDashboardData } = require('./live-data');
 const {
   isAdmin,

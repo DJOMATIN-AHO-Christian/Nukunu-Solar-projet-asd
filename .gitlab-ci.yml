@@ -44,7 +44,7 @@ build_docker:
     - docker build
         --platform linux/amd64
         -t $DOCKER_IMAGE
-        -f docker/backend.Dockerfile .
+        -f infra/docker/backend.Dockerfile .
     - echo "✅ Build Docker amd64 réussi — image $DOCKER_IMAGE"
     # Push vers registry (si DOCKER_REGISTRY_USER défini)
     - |
@@ -102,8 +102,8 @@ deploy_staging_oci:
   script:
     - echo "🚀 [OCI] Déploiement sur l'environnement Staging (BC02-CP5)..."
     - ansible-playbook
-        -i ansible/inventory/staging/hosts
-        ansible/playbooks/staging.yml
+        -i infra/ansible/inventory/staging/hosts
+        infra/ansible/playbooks/staging.yml
         -e "api_version=${CI_COMMIT_SHORT_SHA}"
     - echo "✅ Staging OCI déployé"
   environment:
@@ -126,8 +126,8 @@ deploy_production_oci:
   script:
     - echo "🚀 [OCI] Déploiement en Production sur l'infra OCI..."
     - ansible-playbook
-        -i ansible/inventory/hosts.ini
-        ansible/playbooks/docker.yml
+        -i infra/ansible/inventory/hosts.ini
+        infra/ansible/playbooks/docker.yml
         -e "docker_image=${DOCKER_IMAGE}"
   environment:
     name: production-oci
@@ -149,8 +149,8 @@ deploy_aws_staging:
   script:
     - echo "🚀 [AWS] Déploiement sur EC2 t2.micro (Free Tier)..."
     - ansible-playbook
-        -i ansible/inventory/aws/hosts
-        ansible/playbooks/deploy_aws.yml
+        -i infra/ansible/inventory/aws/hosts
+        infra/ansible/playbooks/deploy_aws.yml
         --extra-vars "docker_image=${DOCKER_IMAGE}"
       --extra-vars "db_password=${DB_PASSWORD}"
       --extra-vars "jwt_secret=${JWT_SECRET}"
@@ -184,7 +184,7 @@ terraform_aws_apply:
     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
   script:
     - echo "🏗️ Provisionnement infrastructure AWS via Terraform..."
-    - cd terraform/aws
+    - cd infra/terraform/aws
     - terraform init
     - terraform validate
     - terraform plan -out=tfplan
@@ -193,7 +193,7 @@ terraform_aws_apply:
     - terraform output ansible_inventory_entry
   artifacts:
     paths:
-      - terraform/aws/terraform.tfstate
+      - infra/terraform/aws/terraform.tfstate
     expire_in: 30 days
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CLOUD_TARGET == "aws"'
