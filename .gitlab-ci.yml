@@ -44,7 +44,7 @@ build_docker:
     - docker build
         --platform linux/amd64
         -t $DOCKER_IMAGE
-        -f docker/backend.Dockerfile .
+        -f infra/docker/backend.Dockerfile .
     - echo "✅ Build Docker amd64 réussi — image $DOCKER_IMAGE"
     # Push vers registry (si DOCKER_REGISTRY_USER défini)
     - |
@@ -68,6 +68,28 @@ security_scan:
   needs: ["build_docker"]
   allow_failure: false
 
+# ── 3.5. Tests E2E API (BC02-CP5) ───────────────────────────
+test_api:
+  stage: test
+  image: node:20-alpine
+  services:
+    - postgres:16-alpine
+  variables:
+    POSTGRES_USER: nukunu_admin
+    POSTGRES_PASSWORD: nukunu_password
+    POSTGRES_DB: nukunu_solar
+    DB_HOST: postgres
+    PORT: 3015
+    JWT_SECRET: test_ci_secret_123
+  script:
+    - echo "🏗️ Exécution des tests fonctionnels de l'API..."
+    - cd server
+    - npm ci --prefer-offline
+    - npm run test
+    - echo "✅ Tests E2E terminés avec succès"
+  needs: ["lint_backend"]
+  allow_failure: false
+
 # ── 4a. Déploiement Staging OCI (BC02-CP5) ──────────────────
 deploy_staging_oci:
   stage: deploy
@@ -80,18 +102,16 @@ deploy_staging_oci:
   script:
     - echo "🚀 [OCI] Déploiement sur l'environnement Staging (BC02-CP5)..."
     - ansible-playbook
-        -i ansible/inventory/staging/hosts
-        ansible/playbooks/staging.yml
+        -i infra/ansible/inventory/staging/hosts
+        infra/ansible/playbooks/staging.yml
         -e "api_version=${CI_COMMIT_SHORT_SHA}"
     - echo "✅ Staging OCI déployé"
   environment:
     name: staging-oci
     url: http://10.0.0.10:3003
-  only:
-    - main
-  needs: ["security_scan"]
+  needs: ["security_scan", "test_api"]
   rules:
-    - if: '$CLOUD_TARGET == "oci" || $CLOUD_TARGET == null'
+    - if: '$CI_COMMIT_BRANCH == "main" && ($CLOUD_TARGET == "oci" || $CLOUD_TARGET == null)'
       when: on_success
 
 # ── 4b. Déploiement Production OCI (main + manual) ──────────
@@ -106,18 +126,15 @@ deploy_production_oci:
   script:
     - echo "🚀 [OCI] Déploiement en Production sur l'infra OCI..."
     - ansible-playbook
-        -i ansible/inventory/hosts.ini
-        ansible/playbooks/docker.yml
+        -i infra/ansible/inventory/hosts.ini
+        infra/ansible/playbooks/docker.yml
         -e "docker_image=${DOCKER_IMAGE}"
   environment:
     name: production-oci
     url: https://nukunu-solar.dev
-  when: manual
-  only:
-    - tags
   needs: ["deploy_staging_oci"]
   rules:
-    - if: '$CLOUD_TARGET == "oci" || $CLOUD_TARGET == null'
+    - if: '$CI_COMMIT_TAG && ($CLOUD_TARGET == "oci" || $CLOUD_TARGET == null)'
       when: manual
 
 # ── 5a. Déploiement AWS Free Tier (auto sur main) ───────────
@@ -132,8 +149,8 @@ deploy_aws_staging:
   script:
     - echo "🚀 [AWS] Déploiement sur EC2 t2.micro (Free Tier)..."
     - ansible-playbook
-        -i ansible/inventory/aws/hosts
-        ansible/playbooks/deploy_aws.yml
+        -i infra/ansible/inventory/aws/hosts
+        infra/ansible/playbooks/deploy_aws.yml
         --extra-vars "docker_image=${DOCKER_IMAGE}"
       --extra-vars "db_password=${DB_PASSWORD}"
       --extra-vars "jwt_secret=${JWT_SECRET}"
@@ -142,11 +159,9 @@ deploy_aws_staging:
   environment:
     name: production-aws
     url: http://$AWS_INSTANCE_IP:3002
-  only:
-    - main
-  needs: ["security_scan"]
+  needs: ["security_scan", "test_api"]
   rules:
-    - if: '$CLOUD_TARGET == "aws"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CLOUD_TARGET == "aws"'
       when: on_success
   # Variables CI/CD GitLab requises :
   # SSH_PRIVATE_KEY_AWS - Clé privée SSH pour l'instance EC2
@@ -169,7 +184,7 @@ terraform_aws_apply:
     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
   script:
     - echo "🏗️ Provisionnement infrastructure AWS via Terraform..."
-    - cd terraform/aws
+    - cd infra/terraform/aws
     - terraform init
     - terraform validate
     - terraform plan -out=tfplan
@@ -178,11 +193,8 @@ terraform_aws_apply:
     - terraform output ansible_inventory_entry
   artifacts:
     paths:
-      - terraform/aws/terraform.tfstate
+      - infra/terraform/aws/terraform.tfstate
     expire_in: 30 days
-  when: manual
-  only:
-    - main
   rules:
-    - if: '$CLOUD_TARGET == "aws"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CLOUD_TARGET == "aws"'
       when: manual

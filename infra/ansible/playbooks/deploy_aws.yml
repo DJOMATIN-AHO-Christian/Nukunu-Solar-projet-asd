@@ -173,6 +173,14 @@
         owner: "{{ app_user }}"
         group: "{{ app_user }}"
 
+    - name: "CP2 — Copier les scripts système (backup)"
+      copy:
+        src: "{{ playbook_dir }}/../../scripts/"
+        dest: "{{ deploy_dir }}/scripts/"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+
     - name: "CP8 — Créer le fichier .env de production"
       copy:
         dest: "{{ deploy_dir }}/.env"
@@ -219,6 +227,14 @@
         docker compose -f docker-compose.monitoring.yml --env-file {{ deploy_dir }}/.env up -d --pull always
       become_user: "{{ app_user }}"
       ignore_errors: yes  # Non bloquant — monitoring optionnel sur t2.micro
+
+    - name: "BC02-CP2 — Configurer le cron de backup PostgreSQL (Chaque nuit à 03:00)"
+      cron:
+        name: "Nukunu Daily DB Backup"
+        minute: "0"
+        hour: "3"
+        user: "{{ app_user }}"
+        job: "{{ deploy_dir }}/scripts/backup-db.sh >> {{ deploy_dir }}/backups/cron.log 2>&1"
 
     - name: Afficher le résumé de déploiement AWS
       debug:

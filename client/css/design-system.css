@@ -73,7 +73,8 @@
   --profile-particulier:  var(--green);
 
   /* ── Typography ───────────────────────────── */
-  --font:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font:    'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Space Grotesk', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
   --text-xs:   0.6875rem;   /* 11px */
   --text-sm:   0.8125rem;   /* 13px */
   --text-base: 0.9375rem;   /* 15px */
@@ -106,9 +107,9 @@
 
   /* ── Shadows ──────────────────────────────── */
   --shadow-sm:  0 1px 4px rgba(0,0,0,0.35);
-  --shadow-md:  0 4px 20px rgba(0,0,0,0.45);
-  --shadow-lg:  0 8px 40px rgba(0,0,0,0.55);
-  --shadow-xl:  0 16px 64px rgba(0,0,0,0.65);
+  --shadow-md:  0 16px 40px rgba(3,8,20,0.34);
+  --shadow-lg:  0 24px 60px rgba(2,6,18,0.48);
+  --shadow-xl:  0 36px 90px rgba(2,6,18,0.60);
 
   /* ── Layout ───────────────────────────────── */
   --sidebar-w:        240px;
@@ -166,7 +167,10 @@ body {
   font-family: var(--font);
   font-size: var(--text-base);
   color: var(--text-primary);
-  background: var(--bg-base);
+  background:
+    radial-gradient(circle at 12% -8%, rgba(245,158,11,0.14), transparent 26%),
+    radial-gradient(circle at 95% 4%, rgba(59,130,246,0.12), transparent 24%),
+    linear-gradient(180deg, #050b13 0%, var(--bg-base) 44%, #09111b 100%);
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -176,6 +180,21 @@ a { text-decoration:none; color:inherit; }
 button { cursor:pointer; border:none; background:none; font-family:inherit; }
 ul,ol { list-style:none; }
 img,svg { display:block; max-width:100%; }
+::selection { background: rgba(245,158,11,0.28); color: var(--text-primary); }
+
+h1, h2, h3, h4,
+.landing-title,
+.module-title,
+.sidebar-logo__text,
+.landing-brand__wordmark,
+.ob-logo-wordmark,
+.auth-title,
+.kpi-card__value,
+.landing-metric__value,
+.hero-number__kw,
+.sim-result__main {
+  font-family: var(--font-display);
+}
 
 /* ── Lucide icon size defaults ────────────────────────────── */
 svg[data-lucide] { width:18px; height:18px; stroke-width:1.75; flex-shrink:0; }
@@ -219,6 +238,10 @@ svg[data-lucide] { width:18px; height:18px; stroke-width:1.75; flex-shrink:0; }
 @keyframes slideDown {
   from { opacity:0; transform:translateY(-8px); }
   to   { opacity:1; transform:translateY(0); }
+}
+@keyframes floatSlow {
+  0%,100% { transform:translate3d(0,0,0) scale(1); }
+  50% { transform:translate3d(0,-10px,0) scale(1.02); }
 }
 
 .fade-up    { animation: fadeUp .4s var(--t) both; }

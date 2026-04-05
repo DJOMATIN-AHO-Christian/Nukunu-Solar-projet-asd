@@ -1,13 +1,13 @@
-const express = require('express');
 const path = require('path');
+require('dotenv').config();
+
+const express = require('express');
 const crypto = require('crypto');
 const { Pool } = require('pg');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const client = require('prom-client');
-const { getLiveHealthSummary, decorateDashboardData } = require('./live-data');
-const { isAdmin, getAdminStats, getAllUsers, getAuditLogs, getSystemInfo, createUser, deleteUser, getRoleDistribution, broadcastMessage, toggleMaintenance, impersonateUser, getDatabaseHealth, getPrometheusMetrics, globalSearch } = require('./admin-controller');
 
 // Monitoring Setup (BC03)
 const register = new client.Registry();
@@ -20,11 +20,10 @@ const httpRequestDurationMicroseconds = new client.Histogram({
 });
 register.registerMetric(httpRequestDurationMicroseconds);
 
-require('dotenv').config();
-
 const app = express();
 const port = Number(process.env.PORT || 3002);
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+process.env.JWT_SECRET = JWT_SECRET;
 const ALLOWED_ROLES = new Set(['installateur', 'fonds', 'industriel', 'particulier']);
 const ALLOWED_SETTINGS_KEYS = new Set([
   'monitoring_filters',
@@ -35,7 +34,26 @@ const ALLOWED_SETTINGS_KEYS = new Set([
   'notification_state',
   'activity_log',
 ]);
-const FRONTEND_ROOT = path.join(__dirname, '..');
+const FRONTEND_ROOT = path.join(__dirname, '../client');
+const { getLiveHealthSummary, decorateDashboardData } = require('./live-data');
+const {
+  isAdmin,
+  getAdminStats,
+  getAllUsers,
+  getAuditLogs,
+  getSystemInfo,
+  createUser,
+  deleteUser,
+  getRoleDistribution,
+  broadcastMessage,
+  toggleMaintenance,
+  impersonateUser,
+  getDatabaseHealth,
+  getPrometheusMetrics,
+  globalSearch,
+  getSystemFlags,
+  logoutAllUsers,
+} = require('./admin-controller');
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:3002',
   'http://127.0.0.1:3002',
@@ -56,7 +74,7 @@ if (!process.env.JWT_SECRET) {
 app.use(cors({
   origin(origin, callback) {
     // Autorise localhost et 127.0.0.1 sur n'importe quel port en local
-    if (!origin || origin === 'null' || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    if (!origin || origin === 'null' || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) || ALLOWED_ORIGINS.includes(origin)) {
       callback(null, true);
       return;
     }
@@ -72,9 +90,6 @@ app.get(['/', '/index.html'], (req, res) => {
 app.use(express.json({ limit: '10mb' }));
 app.use('/css', express.static(path.join(FRONTEND_ROOT, 'css')));
 app.use('/js', express.static(path.join(FRONTEND_ROOT, 'js')));
-app.get(['/', '/index.html'], (req, res) => {
-  res.sendFile(path.join(FRONTEND_ROOT, 'index.html'));
-});
 
 const pool = new Pool({
   user: process.env.DB_USER || 'nukunu_admin',
@@ -84,16 +99,48 @@ const pool = new Pool({
   port: Number(process.env.DB_PORT || 5433),
 });
 
-const authenticateToken = (req, res, next) => {
+async function getSystemConfigMap(keys = []) {
+  if (!keys.length) return {};
+  const result = await pool.query(
+    'SELECT key, value FROM system_config WHERE key = ANY($1::text[])',
+    [keys]
+  );
+  return result.rows.reduce((acc, row) => {
+    acc[row.key] = row.value || {};
+    return acc;
+  }, {});
+}
+
+async function getPlatformState() {
+  const state = await getSystemConfigMap(['maintenance_mode', 'global_broadcast', 'session_revoked_after']);
+  return {
+    maintenance: state.maintenance_mode || { enabled: false },
+    broadcast: state.global_broadcast || { active: false },
+    sessions: state.session_revoked_after || null,
+  };
+}
+
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Accès refusé' });
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Token invalide' });
+  try {
+    const user = jwt.verify(token, JWT_SECRET);
+    const state = await getPlatformState();
+    const revokedAfter = Date.parse(state.sessions?.timestamp || '');
+    if (Number.isFinite(revokedAfter) && user.iat && (user.iat * 1000) < revokedAfter) {
+      return res.status(401).json({ error: 'Session expirée après réinitialisation globale.' });
+    }
+    if (state.maintenance?.enabled && user.role !== 'super_admin' && req.path !== '/api/system/state') {
+      return res.status(503).json({ error: 'La plateforme est temporairement en maintenance.' });
+    }
+
     req.user = user;
     next();
-  });
+  } catch (_error) {
+    return res.status(403).json({ error: 'Token invalide' });
+  }
 };
 
 app.get('/metrics', async (req, res) => {
@@ -115,6 +162,16 @@ app.post('/api/admin/impersonate/:id', authenticateToken, isAdmin, impersonateUs
 app.get('/api/admin/db-health', authenticateToken, isAdmin, getDatabaseHealth);
 app.get('/api/admin/metrics', authenticateToken, isAdmin, getPrometheusMetrics);
 app.get('/api/admin/search', authenticateToken, isAdmin, globalSearch);
+app.get('/api/admin/system-flags', authenticateToken, isAdmin, getSystemFlags);
+app.post('/api/admin/logout-all', authenticateToken, isAdmin, logoutAllUsers);
+app.get('/api/system/state', authenticateToken, async (req, res) => {
+  try {
+    res.json(await getPlatformState());
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erreur lors du chargement de l’état plateforme.' });
+  }
+});
 
 function makeToken(user) {
   return jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
@@ -155,6 +212,21 @@ async function runMigrations() {
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_mime_type VARCHAR(255)",
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_content TEXT",
     "ALTER TABLE billing_entries ADD COLUMN IF NOT EXISTS notes TEXT",
+    `CREATE TABLE IF NOT EXISTS audit_logs (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      action VARCHAR(255) NOT NULL,
+      entity VARCHAR(100),
+      entity_id VARCHAR(100),
+      details JSONB DEFAULT '{}'::jsonb,
+      ip_address VARCHAR(50),
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS system_config (
+      key VARCHAR(100) PRIMARY KEY,
+      value JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )`,
   ];
 
   for (const statement of statements) {
@@ -482,6 +554,11 @@ app.post('/api/auth/register', async (req, res) => {
   }
 
   try {
+    const platformState = await getPlatformState();
+    if (platformState.maintenance?.enabled) {
+      return res.status(503).json({ error: 'Les inscriptions sont temporairement suspendues pendant la maintenance.' });
+    }
+
     await pool.query('BEGIN');
     const hashedPassword = await bcrypt.hash(password, 10);
     const userResult = await pool.query(
@@ -519,6 +596,10 @@ app.post('/api/auth/login', async (req, res) => {
     const user = result.rows[0];
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) return res.status(401).json({ error: 'Mot de passe incorrect.' });
+    const platformState = await getPlatformState();
+    if (platformState.maintenance?.enabled && user.role !== 'super_admin') {
+      return res.status(503).json({ error: 'La plateforme est temporairement en maintenance.' });
+    }
 
     await ensureDomainData(user.id, user.role);
     res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role }, token: makeToken(user) });
@@ -918,7 +999,11 @@ app.get('/api/settings/:key', authenticateToken, async (req, res) => {
     if (!ALLOWED_SETTINGS_KEYS.has(req.params.key)) {
       return res.status(400).json({ error: 'Clé de configuration non autorisée.' });
     }
-    const storedPayload = await getUserSetting(req.user.id, req.params.key, {});
+    let storedPayload = await getUserSetting(req.user.id, req.params.key, {});
+    if (req.params.key === 'dashboard_data' && !Object.keys(storedPayload || {}).length && ALLOWED_ROLES.has(req.user.role)) {
+      await ensureDomainData(req.user.id, req.user.role);
+      storedPayload = await getUserSetting(req.user.id, req.params.key, {});
+    }
     const payload = req.params.key === 'dashboard_data'
       ? await decorateDashboardData(storedPayload, req.user.role)
       : storedPayload;
@@ -944,7 +1029,11 @@ app.put('/api/settings/:key', authenticateToken, async (req, res) => {
 
 app.get('/api/live/status', authenticateToken, async (req, res) => {
   try {
-    const payload = await getUserSetting(req.user.id, 'dashboard_data', {});
+    let payload = await getUserSetting(req.user.id, 'dashboard_data', {});
+    if (!Object.keys(payload || {}).length && ALLOWED_ROLES.has(req.user.role)) {
+      await ensureDomainData(req.user.id, req.user.role);
+      payload = await getUserSetting(req.user.id, 'dashboard_data', {});
+    }
     const liveDashboard = await decorateDashboardData(payload, req.user.role);
     res.json(liveDashboard.live || { enabled: false, providers: {} });
   } catch (error) {
@@ -957,7 +1046,7 @@ app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
     res.json({ ok: true, db: true, frontend: true, live: getLiveHealthSummary() });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ ok: false, db: false, live: getLiveHealthSummary() });
   }
 });

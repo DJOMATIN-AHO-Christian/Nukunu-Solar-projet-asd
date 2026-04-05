@@ -15,7 +15,7 @@
   font-size: var(--text-sm);
   font-weight: 600;
   font-family: var(--font);
-  transition: all var(--t);
+  transition: transform var(--t), box-shadow var(--t), border-color var(--t), background var(--t), color var(--t);
   cursor: pointer;
   white-space: nowrap;
   border: 1px solid transparent;
@@ -30,21 +30,32 @@
   border-color: var(--amber-dark);
   box-shadow: 0 2px 8px rgba(245,158,11,.25);
 }
-.btn-primary:hover { background: linear-gradient(135deg, var(--amber-light), var(--amber)); box-shadow: 0 4px 16px rgba(245,158,11,.35); }
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--amber-light), var(--amber));
+  box-shadow: 0 10px 24px rgba(245,158,11,.28);
+  transform: translateY(-1px);
+}
 
 .btn-secondary {
   background: var(--bg-elevated);
   color: var(--text-primary);
   border-color: var(--border-medium);
 }
-.btn-secondary:hover { background: var(--bg-hover); border-color: var(--border-medium); }
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border-accent);
+  transform: translateY(-1px);
+}
 
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
   border-color: transparent;
 }
-.btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+}
 
 .btn-danger {
   background: var(--red-bg);
@@ -85,11 +96,25 @@
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: var(--sp-5);
-  transition: border-color var(--t), box-shadow var(--t);
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--t), box-shadow var(--t), transform var(--t), background var(--t);
 }
-.card:hover { border-color: var(--border-medium); }
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.24), rgba(255,255,255,0.02), transparent);
+  pointer-events: none;
+}
+.card:hover {
+  border-color: var(--border-medium);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
 .card--glow:hover { box-shadow: var(--amber-glow); border-color: var(--border-accent); }
-.card--elevated { background: var(--bg-elevated); }
+.card--elevated { background: linear-gradient(180deg, rgba(29,47,70,0.9), rgba(23,35,56,0.9)); }
 
 /* ── KPI CARDS ───────────────────────────────────────── */
 .kpi-grid {
@@ -99,7 +124,7 @@
   margin-bottom: var(--sp-6);
 }
 .kpi-card {
-  background: var(--bg-card);
+  background: linear-gradient(180deg, rgba(19,32,47,0.96), rgba(13,22,35,0.98));
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: var(--sp-5);
@@ -208,7 +233,8 @@
   border:1px solid var(--border);
   border-radius:var(--r-lg);
   overflow:auto;
-  background:var(--bg-card);
+  background:linear-gradient(180deg, rgba(19,32,47,0.96), rgba(13,22,35,0.98));
+  box-shadow: var(--shadow-sm);
 }
 .table-header {
   display:flex; align-items:center; justify-content:space-between;
@@ -267,11 +293,12 @@ tbody td:first-child { color:var(--text-primary); font-weight:500; }
 
 /* ── CHART WRAPPER ───────────────────────────────────── */
 .chart-card {
-  background:var(--bg-card);
+  background:linear-gradient(180deg, rgba(19,32,47,0.96), rgba(13,22,35,0.98));
   border:1px solid var(--border);
   border-radius:var(--r-lg);
   padding:var(--sp-5);
   margin-bottom:var(--sp-4);
+  box-shadow: var(--shadow-sm);
 }
 .chart-card__header {
   display:flex; align-items:center; justify-content:space-between;
