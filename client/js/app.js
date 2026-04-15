@@ -330,6 +330,21 @@ const App = (() => {
       avatar.addEventListener('click', () => _navigateTo('account'));
     }
 
+    /* Logout buttons (Sidebar & Topbar) */
+    const sidebarLogout = document.getElementById('sidebar-logout-btn');
+    if (sidebarLogout) {
+      sidebarLogout.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        logout();
+      });
+    }
+
+    const topbarLogout = document.getElementById('topbar-logout-btn');
+    if (topbarLogout) {
+      topbarLogout.addEventListener('click', logout);
+    }
+
     const notifBtn = document.getElementById('notif-btn');
     if (notifBtn) {
       notifBtn.addEventListener('click', () => {
@@ -585,21 +600,24 @@ const App = (() => {
 
   /* ── SESSION ─────────────────────────────────────── */
   function logout() {
-    if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-      window.NukunuStore.clearAuth();
-      document.getElementById('app')?.classList.add('hidden');
-      document.getElementById('auth-overlay')?.classList.add('hidden');
-      document.getElementById('onboarding-overlay')?.classList.add('hidden');
-      document.getElementById('landing-page')?.classList.remove('hidden');
-      document.getElementById('system-banner')?.classList.add('hidden');
-      document.getElementById('system-banner')?.replaceChildren();
-      _systemState = { maintenance: { enabled: false }, broadcast: { active: false }, sessions: null };
-      _currentModule = 'monitoring';
-      destroyCharts();
-      closeModal();
-      _syncLandingMetrics();
-      toast('Session fermée', 'success');
-    }
+    openModal(
+      'Déconnexion',
+      '<p style="color:var(--text-secondary);line-height:1.6">Êtes-vous sûr de vouloir fermer votre session ? Vos modifications non enregistrées pourraient être perdues.</p>',
+      `<button class="btn btn-ghost" onclick="App.closeModal()">Annuler</button>
+       <button class="btn btn-danger" onclick="App.executeLogout()">Se déconnecter</button>`
+    );
+  }
+
+  function executeLogout() {
+    window.NukunuStore.clearAuth();
+    
+    // Explicit redirection to base URL to ensure clean state
+    window.location.href = window.location.origin + window.location.pathname;
+    
+    // Fallback UI reset if redirection fails for some reason
+    document.getElementById('app')?.classList.add('hidden');
+    document.getElementById('landing-page')?.classList.remove('hidden');
+    closeModal();
   }
 
   function showAuth(mode = 'login', options = {}) {
@@ -985,6 +1003,7 @@ const App = (() => {
     fmt,
     fmtEur,
     logout,
+    executeLogout,
     togglePassword,
     getApiBase,
     refreshCurrentModule,

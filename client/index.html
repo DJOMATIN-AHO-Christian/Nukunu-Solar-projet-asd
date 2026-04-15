@@ -208,10 +208,10 @@
         <div class="auth-input-group">
           <select class="auth-input" id="register-role" required style="padding-left: 42px; appearance: none; background: rgba(0,0,0,.2);">
             <option value="" disabled selected>Sélectionnez votre rôle</option>
-            <option value="installateur">🚀 Installateur / Exploitant</option>
-            <option value="fonds">🏢 Fonds d'Investissement</option>
-            <option value="industriel">🏭 Industriel / Tertiaire</option>
-            <option value="particulier">🏠 Particulier</option>
+            <option value="installateur">Installateur / Exploitant</option>
+            <option value="fonds">Fonds d'Investissement</option>
+            <option value="industriel">Industriel / Tertiaire</option>
+            <option value="particulier">Particulier</option>
           </select>
           <i data-lucide="briefcase"></i>
         </div>
@@ -365,15 +365,19 @@
     </nav>
 
     <div class="sidebar-footer">
-      <div class="profile-switcher" id="profile-switcher">
-        <div class="profile-switcher__avatar" id="profile-switcher-avatar">
-          <i data-lucide="hard-hat" id="profile-switcher-icon"></i>
+      <div class="profile-switcher-container">
+        <div class="profile-switcher" id="profile-switcher" title="Mon Compte">
+          <div class="profile-switcher__avatar">
+            <i data-lucide="hard-hat" id="profile-switcher-icon"></i>
+          </div>
+          <div class="profile-switcher__info">
+            <span class="profile-switcher__role" id="profile-switcher-label">Installateur</span>
+            <span class="profile-switcher__action">Voir mon profil</span>
+          </div>
         </div>
-        <div class="profile-switcher__info">
-          <span class="profile-switcher__role" id="profile-switcher-label">Installateur</span>
-          <span class="profile-switcher__action">Voir mon profil</span>
-        </div>
-        <i data-lucide="refresh-cw" class="profile-switcher__icon"></i>
+        <button class="sidebar-logout-btn" id="sidebar-logout-btn" title="Déconnexion">
+          <i data-lucide="log-out"></i>
+        </button>
       </div>
     </div>
   </aside>
@@ -408,6 +412,9 @@
         </button>
         <button class="icon-btn" id="help-btn" title="Aide">
           <i data-lucide="help-circle"></i>
+        </button>
+        <button class="icon-btn icon-btn--danger" id="topbar-logout-btn" title="Déconnexion">
+          <i data-lucide="log-out"></i>
         </button>
         <div class="user-avatar" id="avatar-btn" title="Mon compte" style="cursor: pointer;">NS</div>
       </div>
@@ -462,5 +469,31 @@
 <script src="js/modules/account.js"></script>
 <script src="js/modules/admin.js?v=2.1"></script>
 <script src="js/app.js"></script>
+<!-- 3D Background Effects -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const bgElement = document.querySelector('.landing-page__bg');
+    if (bgElement && typeof VANTA !== 'undefined') {
+      window.landingVanta = VANTA.NET({
+        el: ".landing-page__bg",
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        minHeight: 200.00,
+        minWidth: 200.00,
+        scale: 1.00,
+        scaleMobile: 1.00,
+        color: 0xf59e0b, 
+        backgroundColor: 0x050b14, 
+        points: 15.00,
+        maxDistance: 23.00,
+        spacing: 16.00,
+        showDots: true
+      });
+    }
+  });
+</script>
 </body>
 </html>

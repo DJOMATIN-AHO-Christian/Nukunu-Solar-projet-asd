@@ -51,6 +51,31 @@
           }
       notify: Restart Docker
 
+    # ── SAUVEGARDE POSTGRESQL (BC02-CP2) ──────────────────
+    - name: "BC02-CP2 — Créer le dossier des scripts"
+      file:
+        path: /opt/nukunu/scripts
+        state: directory
+        owner: deploy
+        group: docker
+        mode: '0755'
+
+    - name: "BC02-CP2 — Déployer le script de backup"
+      copy:
+        src: ../../../scripts/provision/backup-db.sh
+        dest: /opt/nukunu/scripts/backup-db.sh
+        owner: deploy
+        group: docker
+        mode: '0755'
+
+    - name: "BC02-CP2 — Configurer le cron de backup (Chaque nuit à 03:00)"
+      cron:
+        name: "Nukunu Daily DB Backup"
+        minute: "0"
+        hour: "3"
+        user: deploy
+        job: "/opt/nukunu/scripts/backup-db.sh >> /opt/nukunu/backups/cron.log 2>&1"
+
   handlers:
     - name: Restart Docker
       systemd:
