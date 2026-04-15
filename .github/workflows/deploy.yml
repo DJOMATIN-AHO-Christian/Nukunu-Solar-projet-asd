@@ -1,0 +1,137 @@
+name: "Nukunu Solar — CI/CD Pipeline"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  # ── 1. Quality Control — Linting (BC02-CP8) ──────────────
+  lint:
+    name: "Lint: Backend & Styling"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install Dependencies
+        run: cd server && npm ci
+
+      - name: Run ESLint
+        run: cd server && npm run lint
+
+  # ── 2. Security Scan — Trivy (BC01-CP3 / BC02-CP8) ────────
+  security-scan:
+    name: "Security: Trivy Container Scan"
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build local image for scanning
+        run: |
+          docker build -t nukunu-solar-backend:test -f infra/docker/backend.Dockerfile .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'nukunu-solar-backend:test'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  # ── 3. E2E Tests — API (BC02-CP5) ─────────────────────────
+  tests-e2e:
+    name: "Tests: API functional scenarios"
+    needs: [lint]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nukunu_admin
+          POSTGRES_PASSWORD: nukunu_password
+          POSTGRES_DB: nukunu_solar
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: cd server && npm ci
+
+      - name: Run API Tests
+        run: cd server && npm run test
+        env:
+          DB_HOST: localhost
+          POSTGRES_USER: nukunu_admin
+          POSTGRES_PASSWORD: nukunu_password
+          POSTGRES_DB: nukunu_solar
+          JWT_SECRET: test_ci_secret_123
+          PORT: 3015
+
+  # ── 4. Continuous Deployment — AWS (BC02-CP8) ─────────────
+  deploy:
+    name: "Deploy: AWS EC2 (Free Tier)"
+    needs: [security-scan, tests-e2e]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/nukunu
+            # Mise à jour du code source
+            git pull origin main
+            
+            # Mise à jour du .env (Optionnel si géré manuellement, mais recommandé pour CI/CD)
+            cat <<EOF > infra/docker/.env
+            DOCKER_IMAGE=nukunu/solar-backend:latest
+            DB_USER=nukunu_admin
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_NAME=nukunu_solar
+            DB_HOST=db
+            DB_PORT=5432
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            ALLOWED_ORIGINS=http://${{ secrets.REMOTE_HOST }}:3002
+            NODE_ENV=production
+            CLOUD_PROVIDER=aws
+            INSTANCE_TYPE=t3.micro
+            EOF
+            
+            # Redémarrage avec build
+            cd infra/docker
+            sudo docker compose -f docker-compose.aws.yml up -d --build
+            
+            # Nettoyage des images inutilisées
+            sudo docker image prune -f

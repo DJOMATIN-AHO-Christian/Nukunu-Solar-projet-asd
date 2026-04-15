@@ -1,10 +1,2 @@
 [aws_prod]
-# Remplacez <IP_ELASTIC> par la valeur de `terraform output instance_public_ip`
-# Commande : terraform -chdir=terraform/aws output instance_public_ip
-nukunu-aws ansible_host=<IP_ELASTIC> ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/nukunu_aws
-
-[aws_prod:vars]
-env=production
-cloud=aws
-instance_type=t2.micro
-docker_compose_file=docker/docker-compose.aws.yml
+nukunu-aws ansible_host=63.35.21.218 ansible_user=ubuntu ansible_ssh_private_key_file=C:\Users\hp\.ssh\nukunu_aws
