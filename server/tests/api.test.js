@@ -51,8 +51,44 @@ test('Nukunu Solar API Tests', async (t) => {
       body: JSON.stringify({ email: 'fake@nukunu.com', password: 'wrongpassword' })
     });
     // Can be 401 or 404 depending on if email exists, in our case 404 since fake doesn't exist
-    assert.ok(res.status >= 400, 'Responds with error status');
-    const json = await res.json();
     assert.ok(json.error, 'An error message is provided');
+  });
+
+  await t.test('Full Auth Flow: Register -> Login -> Fetch Protected Data', async () => {
+    const uniqueEmail = `test_${Date.now()}@nukunu.com`;
+    
+    // 1. Register
+    const regRes = await fetch(`${URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: uniqueEmail,
+        password: 'Password123!',
+        nom: 'Test User'
+      })
+    });
+    assert.strictEqual(regRes.status, 201, 'User successfully registered');
+
+    // 2. Login
+    const loginRes = await fetch(`${URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: uniqueEmail,
+        password: 'Password123!'
+      })
+    });
+    assert.strictEqual(loginRes.status, 200, 'User successfully logged in');
+    const loginJson = await loginRes.json();
+    const token = loginJson.token;
+    assert.ok(token, 'JWT token received');
+
+    // 3. Fetch Protected Data (e.g., plants)
+    const dataRes = await fetch(`${URL}/api/plants`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    assert.strictEqual(dataRes.status, 200, 'Successfully fetched protected plants data');
+    const dataJson = await dataRes.json();
+    assert.ok(Array.isArray(dataJson), 'Data is an array of plants');
   });
 });

@@ -114,3 +114,5 @@ security_scan:
 | Protection anti-brute-force | fail2ban installé et activé | `ansible/playbooks/base.yml` |
 | Scan de vulnérabilités | Trivy dans CI/CD | `.gitlab-ci.yml` |
 | Gestion des secrets | Variables CI/CD masquées, .gitignore | `.gitignore` |
+| Stratégie de Sauvegarde | Scripts automatises + Cron (BC02-CP2) | [`docs/backup.md`](backup.md) |
+| Idempotence provisioning | Checks grep dans User Data et Ansible | [`infra/terraform/aws/main.tf`](../infra/terraform/aws/main.tf) |

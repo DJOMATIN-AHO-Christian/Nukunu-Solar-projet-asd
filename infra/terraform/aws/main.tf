@@ -214,10 +214,12 @@ resource "aws_instance" "nukunu_server" {
     chmod 600 /swapfile
     mkswap /swapfile
     swapon /swapfile
-    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    # Ajout au fstab (idempotent via grep)
+    grep -q "/swapfile" /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
     # Réduire l'utilisation du swap (ne l'utiliser qu'en dernier recours)
     sysctl vm.swappiness=10
-    echo 'vm.swappiness=10' >> /etc/sysctl.conf
+    grep -q "vm.swappiness" /etc/sysctl.conf || echo 'vm.swappiness=10' >> /etc/sysctl.conf
 
     # === Mises à jour et dépendances ===
     apt-get update -y

@@ -90,6 +90,93 @@
 .btn-icon:hover { background:var(--bg-hover); color:var(--text-primary); }
 .btn-icon svg { width:16px; height:16px; }
 
+.icon-btn--danger {
+  color: var(--red);
+}
+.icon-btn--danger:hover {
+  background: var(--red-bg);
+  border-color: var(--red-border);
+  color: var(--red-light);
+}
+
+/* ── PROFILE SWITCHER & LOGOUT ───────────────────────── */
+.profile-switcher-container {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+}
+
+.profile-switcher {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  transition: background var(--t);
+  cursor: pointer;
+}
+.profile-switcher:hover {
+  background: var(--bg-hover);
+}
+
+.profile-switcher__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--amber);
+  flex-shrink: 0;
+}
+.profile-switcher__avatar svg { width: 18px; height: 18px; }
+
+.profile-switcher__info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.profile-switcher__role {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-switcher__action {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.sidebar-logout-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sidebar-logout-btn:hover {
+  background: var(--red-bg);
+  color: var(--red-light);
+  border-color: var(--red-border);
+}
+.sidebar-logout-btn svg { width: 18px; height: 18px; }
+
 /* ── CARDS ───────────────────────────────────────────── */
 .card {
   background: var(--bg-card);

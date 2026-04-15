@@ -34,7 +34,8 @@ const ALLOWED_SETTINGS_KEYS = new Set([
   'notification_state',
   'activity_log',
 ]);
-const FRONTEND_ROOT = path.join(__dirname, '../client');
+const FRONTEND_ROOT = path.resolve(__dirname, '../client');
+
 const { getLiveHealthSummary, decorateDashboardData } = require('./live-data');
 const {
   isAdmin,
@@ -54,6 +55,7 @@ const {
   getSystemFlags,
   logoutAllUsers,
 } = require('./admin-controller');
+
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:3002',
   'http://127.0.0.1:3002',
@@ -73,7 +75,6 @@ if (!process.env.JWT_SECRET) {
 
 app.use(cors({
   origin(origin, callback) {
-    // Autorise localhost et 127.0.0.1 sur n'importe quel port en local
     if (!origin || origin === 'null' || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) || ALLOWED_ORIGINS.includes(origin)) {
       callback(null, true);
       return;
@@ -81,6 +82,9 @@ app.use(cors({
     callback(new Error('Origine non autorisée par CORS'));
   }
 }));
+
+// Use express.static for the entire client folder at the root
+app.use(express.static(FRONTEND_ROOT));
 
 // Redirection root
 app.get(['/', '/index.html'], (req, res) => {
