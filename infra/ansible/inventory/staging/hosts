@@ -1,8 +1,0 @@
-[staging]
-nukunu-staging.local ansible_host=10.0.0.10 ansible_user=ubuntu
-
-[staging:vars]
-env=staging
-db_host=10.0.0.20
-api_version=v2.1-beta
-monitoring_enabled=true
