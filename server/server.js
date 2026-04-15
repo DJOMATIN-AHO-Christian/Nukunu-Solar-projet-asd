@@ -100,7 +100,7 @@ const pool = new Pool({
   host: process.env.DB_HOST || '127.0.0.1',
   database: process.env.DB_NAME || 'nukunu_solar',
   password: process.env.DB_PASSWORD || 'nukunu_password',
-  port: Number(process.env.DB_PORT || 5433),
+  port: Number(process.env.DB_PORT || 5432),
 });
 
 async function getSystemConfigMap(keys = []) {
@@ -211,11 +211,106 @@ function parseDisplayId(value) {
 
 async function runMigrations() {
   const statements = [
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE",
-    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)",
-    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_mime_type VARCHAR(255)",
-    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_content TEXT",
-    "ALTER TABLE billing_entries ADD COLUMN IF NOT EXISTS notes TEXT",
+    // ── 1. BASE TABLES ──────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      role VARCHAR(50) NOT NULL,
+      email_verified BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS role_installateur (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      company_name VARCHAR(255),
+      qualipv_id VARCHAR(100),
+      managed_sites INTEGER
+    )`,
+    `CREATE TABLE IF NOT EXISTS role_fonds (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      management_company VARCHAR(255),
+      managed_volume_mwp DECIMAL,
+      active_assets INTEGER
+    )`,
+    `CREATE TABLE IF NOT EXISTS role_industriel (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      site_name VARCHAR(255),
+      roof_surface_m2 DECIMAL,
+      annual_consumption_kwh DECIMAL
+    )`,
+    `CREATE TABLE IF NOT EXISTS role_particulier (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      installation_address VARCHAR(255),
+      peak_power_kwp DECIMAL,
+      connection_type VARCHAR(100)
+    )`,
+    `CREATE TABLE IF NOT EXISTS documents (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      site_name VARCHAR(255),
+      document_date DATE,
+      expiry_date DATE,
+      file_name VARCHAR(255),
+      file_mime_type VARCHAR(255),
+      file_content TEXT,
+      status VARCHAR(50),
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS tickets (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      site_name VARCHAR(255),
+      site_code VARCHAR(100),
+      type VARCHAR(100),
+      title VARCHAR(255),
+      description TEXT,
+      priority VARCHAR(50),
+      tech VARCHAR(255),
+      due_date DATE,
+      cost_np DECIMAL,
+      sla_hours INTEGER,
+      status VARCHAR(50) DEFAULT 'todo',
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS prospects (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      name VARCHAR(255),
+      contact VARCHAR(255),
+      power_kwc DECIMAL,
+      value_eur DECIMAL,
+      stage VARCHAR(100),
+      last_contact DATE,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS billing_entries (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      site_name VARCHAR(255),
+      contract_name VARCHAR(255),
+      period_label VARCHAR(100),
+      energy_kwh DECIMAL,
+      tariff_label VARCHAR(100),
+      tariff_rate DECIMAL,
+      gross_revenue DECIMAL,
+      notes TEXT,
+      payment_status VARCHAR(50),
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_settings (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      setting_key VARCHAR(100),
+      payload JSONB DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, setting_key)
+    )`,
     `CREATE TABLE IF NOT EXISTS audit_logs (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -231,10 +326,22 @@ async function runMigrations() {
       value JSONB NOT NULL DEFAULT '{}'::jsonb,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )`,
+
+    // ── 2. INCREMENTAL UPDATES (MIGRATIONS) ─────────────────────
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_mime_type VARCHAR(255)",
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_content TEXT",
+    "ALTER TABLE billing_entries ADD COLUMN IF NOT EXISTS notes TEXT",
   ];
 
   for (const statement of statements) {
-    await pool.query(statement);
+    try {
+      await pool.query(statement);
+    } catch (e) {
+      console.error(`Migration Statement Failed: ${statement}`);
+      console.error(e);
+    }
   }
 }
 
