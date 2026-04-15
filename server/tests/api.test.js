@@ -34,8 +34,11 @@ test('Nukunu Solar API Tests', async (t) => {
         try {
           const res = await fetch(`${URL}/api/health`);
           if (res.ok) {
-            success = true;
-            break;
+            const json = await res.json();
+            if (json.ok) {
+              success = true;
+              break;
+            }
           }
         } catch (e) {
           retries--;
