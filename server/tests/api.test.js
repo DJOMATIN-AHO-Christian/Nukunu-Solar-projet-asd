@@ -16,7 +16,8 @@ test('Nukunu Solar API Tests', async (t) => {
       stdio: 'ignore' // on évite de polluer les logs de tests
     });
     // On attend un peu que le serveur démarre et se connecte à la DB
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // On augmente à 5 secondes pour être sûr dans l'environnement CI de GitHub
+    await new Promise(resolve => setTimeout(resolve, 5000));
   });
 
   // Tuer le processus serveur après les tests
@@ -51,6 +52,7 @@ test('Nukunu Solar API Tests', async (t) => {
       body: JSON.stringify({ email: 'fake@nukunu.com', password: 'wrongpassword' })
     });
     // Can be 401 or 404 depending on if email exists, in our case 404 since fake doesn't exist
+    const json = await res.json();
     assert.ok(json.error, 'An error message is provided');
   });
 
