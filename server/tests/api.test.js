@@ -91,7 +91,8 @@ test('Nukunu Solar API Tests', async (t) => {
       body: JSON.stringify({
         email: uniqueEmail,
         password: 'Password123!',
-        nom: 'Test User'
+        name: 'Test User',
+        role: 'particulier'
       })
     });
     assert.strictEqual(regRes.status, 201, 'User successfully registered');
