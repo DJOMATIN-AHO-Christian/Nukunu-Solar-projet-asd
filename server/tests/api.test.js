@@ -7,21 +7,46 @@ test('Nukunu Solar API Tests', async (t) => {
   const URL = `http://localhost:${PORT}`;
   let serverProcess;
 
-  // Démarrer le serveur avant les tests
-  t.before(async () => {
-    // On copie l'environnement actuel mais on force le PORT et on désactive les logs superflus
-    serverProcess = spawn('node', ['server.js'], {
-      cwd: process.cwd(),
-      env: { ...process.env, PORT, NODE_ENV: 'test' },
-      stdio: 'ignore' // on évite de polluer les logs de tests
-    });
-    // On attend un peu que le serveur démarre et se connecte à la DB
-    // On augmente à 5 secondes pour être sûr dans l'environnement CI de GitHub
-    await new Promise(resolve => setTimeout(resolve, 5000));
-  });
+    // Tuer tout processus occupant le port 3015 au démarrage (sécurité supplémentaire)
+    try { spawn('fuser', ['-k', '3015/tcp']); } catch(e) {}
 
-  // Tuer le processus serveur après les tests
-  t.after(() => {
+    // Démarrer le serveur avant les tests
+    t.before(async () => {
+      serverProcess = spawn('node', ['server.js'], {
+        cwd: process.cwd(),
+        env: { 
+          ...process.env, 
+          PORT, 
+          NODE_ENV: 'test',
+          DB_USER: process.env.DB_USER || 'nukunu_admin',
+          DB_PASSWORD: process.env.DB_PASSWORD || 'nukunu_password',
+          DB_NAME: process.env.DB_NAME || 'nukunu_solar',
+          DB_HOST: process.env.DB_HOST || 'localhost',
+          DB_PORT: '5432'
+        },
+        stdio: 'inherit' // on veut voir les erreurs en CI
+      });
+
+      // Boucle d'attente intelligente (Retry loop)
+      let retries = 10;
+      let success = false;
+      while (retries > 0 && !success) {
+        try {
+          const res = await fetch(`${URL}/api/health`);
+          if (res.ok) {
+            success = true;
+            break;
+          }
+        } catch (e) {
+          retries--;
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+      if (!success) throw new Error('Le serveur API n\'a pas démarré à temps.');
+    });
+
+    // Tuer le processus serveur après les tests
+    t.after(() => {
     if (serverProcess) {
       serverProcess.kill();
     }

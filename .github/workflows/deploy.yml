@@ -87,9 +87,9 @@ jobs:
         run: cd server && npm run test
         env:
           DB_HOST: localhost
-          POSTGRES_USER: nukunu_admin
-          POSTGRES_PASSWORD: nukunu_password
-          POSTGRES_DB: nukunu_solar
+          DB_USER: nukunu_admin
+          DB_PASSWORD: nukunu_password
+          DB_NAME: nukunu_solar
           JWT_SECRET: test_ci_secret_123
           PORT: 3015
 
