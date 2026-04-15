@@ -683,8 +683,8 @@ app.post('/api/auth/register', async (req, res) => {
     if (role === 'industriel') await pool.query('INSERT INTO role_industriel (user_id) VALUES ($1)', [user.id]);
     if (role === 'particulier') await pool.query('INSERT INTO role_particulier (user_id) VALUES ($1)', [user.id]);
 
-    await ensureDomainData(user.id, role);
     await pool.query('COMMIT');
+    await ensureDomainData(user.id, role);
 
     res.status(201).json({ user, token: makeToken(user) });
   } catch (error) {
