@@ -8,7 +8,7 @@ test('Nukunu Solar API Tests', async (t) => {
   let serverProcess;
 
     // Tuer tout processus occupant le port 3015 au démarrage (sécurité supplémentaire)
-    try { spawn('fuser', ['-k', '3015/tcp']); } catch(e) {}
+    try { require('child_process').spawnSync('fuser', ['-k', '3015/tcp']); } catch(e) {}
 
     // Démarrer le serveur avant les tests
     t.before(async () => {
