@@ -4,18 +4,17 @@
 
 ---
 
-## 1. Contrôle d'accès réseau (OCI / Terraform)
+## 1. Contrôle d'accès réseau (AWS / Terraform)
 
-### Règles de firewall — Security Lists OCI
+### Règles de firewall — Security Groups AWS
 
-Le fichier [`terraform/main.tf`](../terraform/main.tf) définit des règles d'accès strictes :
+Le fichier [`infra/terraform/aws/main.tf`](../infra/terraform/aws/main.tf) définit des règles d'accès strictes :
 
 | Port | Protocole | Source autorisée | Justification |
 |------|-----------|-----------------|---------------|
 | 22 (SSH) | TCP | `var.admin_ip_cidr` (ex: `1.2.3.4/32`) | Restreint à l'IP de l'administrateur uniquement |
-| 80 (HTTP) | TCP | `0.0.0.0/0` | Trafic web public — redirigé vers HTTPS |
-| 443 (HTTPS) | TCP | `0.0.0.0/0` | Trafic applicatif chiffré |
-| 6443 (K3s API) | TCP | `var.admin_ip_cidr` | API Kubernetes restreinte à l'admin |
+| 80 (HTTP) | TCP | `0.0.0.0/0` | Trafic web public |
+| 3002 (App) | TCP | `var.admin_ip_cidr` | Interface d'administration Nukunu Solar restreinte |
 
 > [!IMPORTANT]
 > Le port SSH **n'est pas ouvert sur `0.0.0.0/0`**. La variable `admin_ip_cidr` est définie dans `terraform.tfvars` (non versionné) et injectée au provisionnement. Ce fichier ne contient **aucune donnée sensible**.
@@ -42,9 +41,9 @@ admin_ip_cidr = "91.165.xx.xx/32"  # IP de l'administrateur
 
 ---
 
-## 2. Hardening système (Ansible)
+## 2. Hardening système (Ansible & User Data)
 
-Le playbook [`ansible/playbooks/base.yml`](../ansible/playbooks/base.yml) applique automatiquement :
+Le déploiement via [`infra/ansible/playbooks/deploy_aws.yml`](../infra/ansible/playbooks/deploy_aws.yml) applique automatiquement :
 
 ### Gestion des accès SSH
 ```yaml
@@ -63,12 +62,12 @@ Double protection : OCI Security Lists (couche réseau) **+** UFW (couche OS) :
 
 ```yaml
 # UFW — ports ouverts sur l'instance
-- '22'    # SSH (couche OCI filtre déjà par IP)
+- '22'    # SSH (filtré en amont par AWS Security Group)
 - '80'    # HTTP
-- '443'   # HTTPS
-- '6443'  # K3s API
+- '3002'  # Nukunu App API
+- '3000'  # Grafana Monitoring
 ```
-Politique par défaut : **REJECT** (tout bloquer sauf les ports listés)
+Politique par défaut : **DENY** (tout bloquer sauf les ports listés)
 
 ### fail2ban
 
@@ -80,27 +79,28 @@ Le package `fail2ban` est installé via `base.yml`. Il protège contre les attaq
 
 | Secret | Mécanisme |
 |--------|-----------|
-| Clés API OCI (tenancy_ocid, fingerprint...) | Variables Terraform — `terraform.tfvars` dans `.gitignore` |
-| SSH Private Key (pipeline CI/CD) | Variable CI/CD GitLab `$SSH_PRIVATE_KEY` (masked + protected) |
-| JWT_SECRET (backend) | Variable d'environnement Docker — jamais en clair dans le code |
-| Mot de passe PostgreSQL | Variable d'environnement Docker Compose |
-| Mot de passe Grafana Admin | Variable d'environnement + Ansible Vault (en production) |
+| Clés AWS (Access Keys) | Stockées localement (~/.aws/credentials) |
+| SSH Private Key (CI/CD) | GitHub Secret `SSH_PRIVATE_KEY` |
+| JWT_SECRET (backend) | GitHub Secret `JWT_SECRET` -> .env production |
+| Mot de passe PostgreSQL | GitHub Secret `DB_PASSWORD` -> .env production |
+| Mot de passe Grafana | Variable d'environnement sécurisée |
 
 ---
 
-## 4. Pipeline CI/CD — Scan de sécurité (Trivy)
+## 4. Pipeline CI/CD — Sécurité (GitHub Actions)
 
-Le stage `security_scan` dans [`.gitlab-ci.yml`](../.gitlab-ci.yml) analyse l'image Docker avant tout déploiement :
+La pipeline de déploiement [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) intègre :
 
-```yaml
-security_scan:
-  image: aquasec/trivy:latest
-  script:
-    - trivy image --severity HIGH,CRITICAL --exit-code 1 $DOCKER_IMAGE
-```
-
-- Si des vulnérabilités **HIGH** ou **CRITICAL** sont détectées → **pipeline bloqué**
-- Aucune image vulnérable ne peut atteindre la production
+- **Linting** (Qualité)
+- **Trivy Scan** (Analyse vulnérabilités) :
+  ```yaml
+  - name: Run Trivy vulnerability scanner
+    uses: aquasecurity/trivy-action@master
+    with:
+      image-ref: 'nukunu-solar-backend:test'
+      severity: 'CRITICAL,HIGH'
+  ```
+- **Tests E2E** (Validation fonctionnelle)
 
 ---
 
@@ -108,11 +108,11 @@ security_scan:
 
 | Exigence CP3 | Implémentation | Fichier de preuve |
 |---|---|---|
-| Sécurisation des accès SSH | `PermitRootLogin no` + auth par clé | `ansible/playbooks/base.yml` |
-| Firewall réseau | OCI Security Lists + UFW | `terraform/main.tf` |
-| Restriction IP administration | `var.admin_ip_cidr` pour SSH et K3s | `terraform/main.tf` |
-| Protection anti-brute-force | fail2ban installé et activé | `ansible/playbooks/base.yml` |
-| Scan de vulnérabilités | Trivy dans CI/CD | `.gitlab-ci.yml` |
-| Gestion des secrets | Variables CI/CD masquées, .gitignore | `.gitignore` |
+| Sécurisation des accès SSH | `PermitRootLogin no` + auth par clé | `infra/ansible/playbooks/deploy_aws.yml` |
+| Firewall réseau | AWS Security Groups + UFW | `infra/terraform/aws/main.tf` |
+| Restriction IP administration | `var.admin_ip_cidr` pour SSH | `infra/terraform/aws/main.tf` |
+| Protection anti-brute-force | fail2ban installé et activé | `infra/ansible/playbooks/deploy_aws.yml` |
+| Scan de vulnérabilités | Trivy dans GitHub Actions | `.github/workflows/deploy.yml` |
+| Gestion des secrets | GitHub Secrets (Action env) | `.github/workflows/deploy.yml` |
 | Stratégie de Sauvegarde | Scripts automatises + Cron (BC02-CP2) | [`docs/backup.md`](backup.md) |
-| Idempotence provisioning | Checks grep dans User Data et Ansible | [`infra/terraform/aws/main.tf`](../infra/terraform/aws/main.tf) |
+| Idempotence provisioning | Checks grep dans User Data | [`infra/terraform/aws/main.tf`](../infra/terraform/aws/main.tf) |
