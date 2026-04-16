@@ -33,13 +33,12 @@ test('Nukunu Solar API Tests', async (t) => {
       while (retries > 0 && !success) {
         try {
           const res = await fetch(`${URL}/api/health`);
-          if (res.ok) {
-            const json = await res.json();
-            if (json.ok) {
-              success = true;
-              break;
-            }
-          }
+          if (!res.ok) throw new Error('Not OK');
+          const json = await res.json();
+          if (!json.ok) throw new Error('DB Not Ready');
+          
+          success = true;
+          break;
         } catch (e) {
           retries--;
           await new Promise(resolve => setTimeout(resolve, 2000));
@@ -114,12 +113,12 @@ test('Nukunu Solar API Tests', async (t) => {
     const token = loginJson.token;
     assert.ok(token, 'JWT token received');
 
-    // 3. Fetch Protected Data (e.g., plants)
-    const dataRes = await fetch(`${URL}/api/plants`, {
+    // 3. Fetch Protected Data (e.g., account)
+    const dataRes = await fetch(`${URL}/api/account`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    assert.strictEqual(dataRes.status, 200, 'Successfully fetched protected plants data');
+    assert.strictEqual(dataRes.status, 200, 'Successfully fetched protected account data');
     const dataJson = await dataRes.json();
-    assert.ok(Array.isArray(dataJson), 'Data is an array of plants');
+    assert.ok(dataJson.name === 'Test User', 'Data contains the correct user info');
   });
 });
