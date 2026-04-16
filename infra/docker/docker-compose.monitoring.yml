@@ -18,6 +18,10 @@ services:
     networks:
       - nukunu-network
     restart: always
+    # Limites strictes pour t2.micro/t3.micro (1GB RAM)
+    mem_limit: 250m
+    memswap_limit: 500m
+    cpus: "0.2"
 
   grafana:
     image: grafana/grafana:latest
@@ -33,6 +37,9 @@ services:
     networks:
       - nukunu-network
     restart: always
+    mem_limit: 200m
+    memswap_limit: 400m
+    cpus: "0.2"
 
 networks:
   nukunu-network:

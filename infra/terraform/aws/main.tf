@@ -120,13 +120,13 @@ resource "aws_security_group" "nukunu_sg" {
     cidr_blocks = [var.admin_ip_cidr]
   }
 
-  # Grafana (admin seulement)
+  # Grafana (Dashboards)
   ingress {
-    description = "Grafana Dashboard"
+    description = "Grafana Dashboard public"
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
-    cidr_blocks = [var.admin_ip_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # Prometheus (admin seulement)
