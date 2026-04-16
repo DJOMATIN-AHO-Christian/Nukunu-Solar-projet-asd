@@ -34,15 +34,6 @@ services:
       - nukunu-network
     restart: always
 
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: nukunu-node-exporter
-    ports:
-      - "9100:9100"
-    networks:
-      - nukunu-network
-    restart: always
-
 networks:
   nukunu-network:
     external: true

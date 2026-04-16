@@ -147,6 +147,22 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
+// 📈 Middleware Monitoring — Tracking Durée Requêtes (BC03)
+app.use((req, res, next) => {
+  const end = httpRequestDurationMicroseconds.startTimer();
+  res.on('finish', () => {
+    // On ne track que les routes API pour éviter de polluer les métriques avec les fichiers statiques
+    if (req.path.startsWith('/api')) {
+      httpRequestDurationMicroseconds.observe(
+        { method: req.method, route: req.path, code: res.statusCode },
+        end()
+      );
+    }
+  });
+  next();
+});
+
+
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
