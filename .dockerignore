@@ -1,0 +1,6 @@
+node_modules
+server/node_modules
+.git
+.github
+*.log
+job_*.txt
