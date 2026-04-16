@@ -146,7 +146,7 @@ jobs:
             
             # Redémarrage avec build
             cd infra/docker
-            sudo docker compose -f docker-compose.aws.yml down || true
+            sudo docker compose -f docker-compose.aws.yml -f docker-compose.monitoring.yml down || true
             sudo docker image prune -f
-            sudo docker compose -f docker-compose.aws.yml up -d
+            sudo docker compose -f docker-compose.aws.yml -f docker-compose.monitoring.yml up -d
 
