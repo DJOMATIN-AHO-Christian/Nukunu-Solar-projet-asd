@@ -122,8 +122,8 @@ jobs:
             
             cd /opt/nukunu
             # Forcer l'annulation d'éventuelles modifs locales pour éviter les conflits au pull
-            git reset --hard HEAD
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             
             # Mise à jour du .env
             mkdir -p infra/docker
@@ -141,8 +141,12 @@ jobs:
             INSTANCE_TYPE=t3.micro
             EOF
             
+            # Build local explicite de l'image Docker (car absente sur Docker Hub)
+            sudo docker build -t nukunu/solar-backend:latest -f infra/docker/backend.Dockerfile .
+            
             # Redémarrage avec build
             cd infra/docker
             sudo docker compose -f docker-compose.aws.yml down || true
             sudo docker image prune -f
-            sudo docker compose -f docker-compose.aws.yml up -d --build
+            sudo docker compose -f docker-compose.aws.yml up -d
+
