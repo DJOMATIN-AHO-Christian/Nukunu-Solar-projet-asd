@@ -119,6 +119,6 @@ test('Nukunu Solar API Tests', async (t) => {
     });
     assert.strictEqual(dataRes.status, 200, 'Successfully fetched protected account data');
     const dataJson = await dataRes.json();
-    assert.ok(dataJson.name === 'Test User', 'Data contains the correct user info');
+    assert.ok(dataJson.user.name === 'Test User', 'Data contains the correct user info');
   });
 });

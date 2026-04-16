@@ -111,11 +111,21 @@ jobs:
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            # Vérifier si /opt/nukunu existe, sinon initialiser
+            if [ ! -d "/opt/nukunu" ]; then
+              echo "Clonage initial du dépôt Nukunu Solar..."
+              sudo mkdir -p /opt/nukunu
+              sudo chown -R $USER:$USER /opt/nukunu
+              git clone https://github.com/DJOMATIN-AHO-Christian/Nukunu-Solar-projet-asd.git /opt/nukunu
+            fi
+            
             cd /opt/nukunu
-            # Mise à jour du code source
+            # Forcer l'annulation d'éventuelles modifs locales pour éviter les conflits au pull
+            git reset --hard HEAD
             git pull origin main
             
-            # Mise à jour du .env (Optionnel si géré manuellement, mais recommandé pour CI/CD)
+            # Mise à jour du .env
+            mkdir -p infra/docker
             cat <<EOF > infra/docker/.env
             DOCKER_IMAGE=nukunu/solar-backend:latest
             DB_USER=nukunu_admin
@@ -132,7 +142,6 @@ jobs:
             
             # Redémarrage avec build
             cd infra/docker
-            sudo docker compose -f docker-compose.aws.yml up -d --build
-            
-            # Nettoyage des images inutilisées
+            sudo docker compose -f docker-compose.aws.yml down || true
             sudo docker image prune -f
+            sudo docker compose -f docker-compose.aws.yml up -d --build
