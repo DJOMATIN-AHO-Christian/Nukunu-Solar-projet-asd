@@ -38,7 +38,6 @@ services:
     networks:
       - nukunu-network
     restart: always
-    user: "0:0"
     # Limites ajustées : Grafana requiert plus de RAM au démarrage (OOMKilled)
     mem_limit: 500m
     memswap_limit: 800m
