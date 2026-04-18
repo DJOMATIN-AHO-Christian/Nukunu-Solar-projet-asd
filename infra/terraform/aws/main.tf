@@ -117,7 +117,7 @@ resource "aws_security_group" "nukunu_sg" {
     from_port   = 3002
     to_port     = 3002
     protocol    = "tcp"
-    cidr_blocks = [var.admin_ip_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # Grafana (Dashboards)
