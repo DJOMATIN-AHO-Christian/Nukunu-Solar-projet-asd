@@ -1,9 +1,8 @@
-# ════════════════════════════════════════════════════════════
-# Grafana — Provisioning Datasource Prometheus
-# Chargé automatiquement au démarrage (BC03 — CP10)
-# ════════════════════════════════════════════════════════════
-
 apiVersion: 1
+
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
 
 datasources:
   - name: Prometheus
@@ -12,7 +11,7 @@ datasources:
     access: proxy
     url: http://prometheus:9090
     isDefault: true
-    editable: false
+    editable: true
     jsonData:
       timeInterval: "15s"
       httpMethod: POST
