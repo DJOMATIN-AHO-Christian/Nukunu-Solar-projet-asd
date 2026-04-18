@@ -39,9 +39,9 @@ services:
       - nukunu-network
     restart: always
     user: "0:0"
-    # Limites strictes pour t2/t3.micro (1GB RAM)
-    mem_limit: 300m
-    memswap_limit: 600m
+    # Limites ajustées : Grafana requiert plus de RAM au démarrage (OOMKilled)
+    mem_limit: 500m
+    memswap_limit: 800m
     cpus: "0.2"
 
 networks:
