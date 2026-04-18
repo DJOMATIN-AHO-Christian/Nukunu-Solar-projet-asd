@@ -84,13 +84,13 @@ resource "aws_security_group" "nukunu_sg" {
   description = "Regles de securite Nukunu Solar (BC01-CP3)"
   vpc_id      = aws_vpc.nukunu_vpc.id
 
-  # SSH — Restreint à l'IP administrateur (BC01-CP3)
+  # SSH — Accès public pour CI/CD (GitHub Actions)
   ingress {
-    description = "SSH restricted to admin IP"
+    description = "SSH public for CI/CD"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [var.admin_ip_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # HTTP public
@@ -117,16 +117,16 @@ resource "aws_security_group" "nukunu_sg" {
     from_port   = 3002
     to_port     = 3002
     protocol    = "tcp"
-    cidr_blocks = [var.admin_ip_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Grafana (admin seulement)
+  # Grafana (Dashboards)
   ingress {
-    description = "Grafana Dashboard"
+    description = "Grafana Dashboard public"
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
-    cidr_blocks = [var.admin_ip_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # Prometheus (admin seulement)

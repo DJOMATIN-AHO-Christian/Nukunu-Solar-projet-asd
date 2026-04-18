@@ -17,7 +17,7 @@ const App = (() => {
   };
   let _apiBase = window.NUKUNU_API_BASE
     || localStorage.getItem('nukunu_api_base')
-    || 'http://localhost:3002';
+    || '';
 
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     _apiBase = 'http://localhost:3002';

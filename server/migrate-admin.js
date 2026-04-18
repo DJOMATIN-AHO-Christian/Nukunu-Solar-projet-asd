@@ -15,9 +15,7 @@ const pool = new Pool({
 async function migrate() {
   try {
     console.log('Running migration...');
-    const sql = fs.readFileSync(path.join(__dirname, '../db/migration_admin.sql'), 'utf-8');
-    await pool.query(sql);
-
+    
     console.log('Seeding Super Admin...');
     const email = 'superadmin@nukunu.com';
     const password = 'superpassword123';
