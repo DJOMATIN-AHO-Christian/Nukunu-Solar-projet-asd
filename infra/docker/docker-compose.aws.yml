@@ -73,8 +73,6 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3002}
       PROMETHEUS_URL: http://prometheus:9090
-    ports:
-      - "3002:3002"
     networks:
       - nukunu-network
     restart: on-failure:5
@@ -109,6 +107,22 @@ services:
     memswap_limit: 100m
     cpus: "0.1"
     pid: host
+
+  # ── Reverse Proxy Nginx (BC01-CP3) ────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: nukunu-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - nukunu-app
+    networks:
+      - nukunu-network
+    restart: on-failure:5
+    mem_limit: 100m
 
 networks:
   nukunu-network:
