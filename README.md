@@ -38,7 +38,7 @@ graph TD
 
     subgraph IaC ["2. Provisioning et Cloud"]
         TF["Terraform"] -->|Provision| AWS_EC2["AWS EC2 et Security Group"]
-        AWS_EC2 -->|Port 3002| API_Access["App Access"]
+        AWS_EC2 -->|Port 80/443| Proxy["Nginx Reverse Proxy"]
         AWS_EC2 -->|Port 3000| Grafana_Access["Grafana Access"]
     end
 
@@ -49,6 +49,7 @@ graph TD
             NodeExp["Node Exporter"]
         end
         subgraph App ["Nukunu Core"]
+            Nginx["Nginx"]
             API["Backend API"]
             DB[("PostgreSQL 16")]
         end
@@ -56,7 +57,8 @@ graph TD
 
     %% Interactions
     CICD -->|Deploy SSH| App
-    User((Utilisateur)) -->|HTTPS/Port 3002| API
+    User((Utilisateur)) -->|HTTP/HTTPS| Proxy
+    Proxy -->|Interne 3002| API
     User((Admin)) -->|Port 3000| Graf
     API -->|SQL| DB
     Prom -.->|Scrape| API
@@ -106,7 +108,7 @@ docker compose -f infra/docker/docker-compose.yml up -d
 Le deploiement sur l'infrastructure de production est integralement automatise grace a GitHub Actions. Cette approche garantit une qualite constante et une securite accrue en eliminant les erreurs humaines lors des mises a jour.
 
 **Acces aux Environnements de Production :**
-- **URL de l'Application** : [http://34.243.24.254:3002](http://34.243.24.254:3002) - Interface utilisateur et API.
+- **URL de l'Application** : [http://34.243.24.254](http://34.243.24.254) - Interface utilisateur et API (via Nginx Reverse Proxy).
 - **Interface Monitoring** : [http://34.243.24.254:3000](http://34.243.24.254:3000) - Dashboards de supervision technique.
 
 **Identifiants pour les Tests (Profil Super Admin) :**
