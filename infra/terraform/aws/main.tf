@@ -44,7 +44,7 @@ resource "aws_vpc" "nukunu_vpc" {
 
 resource "aws_internet_gateway" "nukunu_igw" {
   vpc_id = aws_vpc.nukunu_vpc.id
-  tags = { Name = "nukunu-igw" }
+  tags   = { Name = "nukunu-igw" }
 }
 
 # ────────────────────────────────────────────────
@@ -111,13 +111,13 @@ resource "aws_security_group" "nukunu_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Application Nukunu (accès direct dev/staging)
+  # Application Nukunu (accès direct backend) - Restreint à l'admin
   ingress {
-    description = "Nukunu App Port"
+    description = "Nukunu App Port (Admin Only)"
     from_port   = 3002
     to_port     = 3002
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.admin_ip_cidr]
   }
 
   # Grafana (Dashboards)
@@ -233,8 +233,8 @@ resource "aws_instance" "nukunu_server" {
   EOF
 
   tags = {
-    Name    = "nukunu-solar-server"
-    Project = "nukunu-solar"
+    Name     = "nukunu-solar-server"
+    Project  = "nukunu-solar"
     FreeTier = "t2.micro"
   }
 }

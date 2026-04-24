@@ -20,6 +20,7 @@ Le projet s'appuie sur une stack très moderne, allégée en dépendances fronte
 - **JSONWebToken (JWT)** : Utilisé pour sécuriser les routes ("Stateless authentication"). Après le login, les utilisateurs reçoivent un token à inclure dans les en-têtes HTTP pour accéder aux données sensibles.
 - **Bcrypt** : Outil de cryptographie utilisé pour hacher les mots de passe des administrateurs avant leur stockage en base de données.
 - **Cors & Dotenv** : Gestion des origines réseau autorisées et des secrets environnements (clés AWS, mot de passe DB, secret JWT).
+- **Nginx (Reverse Proxy)** : Le backend Node.js (port 3002) n'est jamais exposé directement sur internet (BC01-CP3). Nginx agit comme une barrière de sécurité sur le port 80/443, filtrant les requêtes publiques et les transférant au réseau interne Docker. En production réelle, le port 443 est géré par un ALB (Application Load Balancer) ou via des certificats Let's Encrypt.
 
 ### 4. Tests & Qualité de code
 - **Playwright** : Outil performant pour réaliser les tests End-to-End ("de bout en bout") du navigateur.
@@ -102,3 +103,31 @@ NUKUNU-SOLAR/
 5. **Prometheus** (`infra/docker/prometheus/`) vient lire ces données et les sauvegarde.
 6. L'opérateur ouvre **Grafana** (`infra/docker/grafana/`) pour visualiser l'activité interne de l'application et du serveur **AWS** en temps réel.
 7. Un bug est corrigé par un codeur. Il pousse le code... l'Agent **GitHub Actions** (`.github/workflows/deploy.yml`) se réveille, valide le changement, et envoie le tout sur **AWS EC2** automatiquement.
+
+---
+
+## 🛑 Difficultés Rencontrées : La traque des OOM Kills (Grafana)
+
+Lors du passage en production sur l'instance AWS `t3.micro` (qui ne possède qu'1 Go de RAM), le conteneur Grafana a commencé à crasher en boucle (statut `Exited 137`). L'analyse des journaux via `docker inspect` et `dmesg` a confirmé qu'il s'agissait de **OOM Kills** (Out Of Memory) perpétués par l'hyperviseur Linux.
+
+**Débogage en cascade :**
+1. **Limites strictes de mémoire** : J'ai d'abord tenté d'imposer un `mem_limit: 150m` au conteneur. Cependant, au démarrage, l'application Go (Grafana) alloue souvent plus de mémoire virtuelle que la limite imposée pour charger les plugins, ce qui provoquait un kill immédiat.
+2. **Droits d'exécution (Root)** : Pensant à un problème d'accès aux volumes (`/var/lib/grafana`), un test temporaire avec `user: "0:0"` (root) a été fait. Si cela permettait de bypasser les erreurs de permissions, ce n'était pas acceptable en termes de sécurité (sanctionnable sur la compétence CP3).
+3. **Correction du Provisioning** : J'ai identifié un conflit critique dans les fichiers de provisioning YAML (deux fichiers essayaient d'écrire sur le même point de montage simultanément, créant une boucle infinie saturant la RAM et le CPU au démarrage).
+4. **Résolution finale** : J'ai nettoyé le dossier de provisioning, rétabli l'utilisateur sécurisé (UID 472) en corrigeant les droits du volume monté sur AWS (`chown -R 472:472`), et **supprimé les limites de ressources strictes** dans `docker-compose.monitoring.yml`. À la place, j'ai activé un fichier **Swap de 2 Go** directement sur l'OS Ubuntu via Ansible. 
+
+**Résultat :** Le noyau Linux gère désormais la mémoire élastiquement. Grafana peut consommer ponctuellement 300 Mo au démarrage (Swapping) puis redescendre à ~80 Mo en régime de croisière sans jamais crasher, et tout cela en préservant le profil de sécurité initial.
+
+---
+
+## 📈 Supervision Visuelle (Mockups et Résultats réels)
+
+La collecte des métriques matérielles (Node Exporter) et logicielles (Prometheus/Grafana) est désormais pleinement fonctionnelle en production. 
+
+### Tableau de bord principal (Health & Status)
+Vue d'ensemble sur le serveur AWS (CPU, RAM, Disque) et les métriques de base.
+![Dashboard Principal](mockups/grafana_home.png)
+
+### Tableau de bord applicatif (Nukunu Custom Metrics)
+Suivi en temps réel des interactions avec la base de données PostgreSQL, de l'état du frontend et de la consommation de l'API Node.js.
+![Dashboard Applicatif](mockups/grafana_dashboard.png)
