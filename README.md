@@ -108,8 +108,8 @@ docker compose -f infra/docker/docker-compose.yml up -d
 Le deploiement sur l'infrastructure de production est integralement automatise grace a GitHub Actions. Cette approche garantit une qualite constante et une securite accrue en eliminant les erreurs humaines lors des mises a jour.
 
 **Acces aux Environnements de Production :**
-- **URL de l'Application** : [http://34.243.24.254](http://34.243.24.254) - Interface utilisateur et API (via Nginx Reverse Proxy).
-- **Interface Monitoring** : [http://34.243.24.254:3000](http://34.243.24.254:3000) - Dashboards de supervision technique.
+- **URL de l'Application** : [http://34.243.44.194](http://34.243.44.194) - Interface utilisateur et API (via Nginx Reverse Proxy).
+- **Interface Monitoring** : [http://34.243.44.194:3000](http://34.243.44.194:3000) - Dashboards de supervision technique.
 
 **Identifiants pour les Tests (Profil Super Admin) :**
 Pour tester les fonctionnalites d'administration, vous pouvez utiliser les identifiants suivants, pre-configures dans la base de donnees via les scripts de migration :
