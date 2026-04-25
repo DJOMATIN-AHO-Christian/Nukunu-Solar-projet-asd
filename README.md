@@ -72,7 +72,10 @@ graph TD
 
 ### 1. Supervision et Metrics Systeme
 Le monitoring permet une visibilite totale sur la production energetique, l'irradiance solaire et les indicateurs de performance (Performance Ratio). Le dashboard Grafana integre fournit egalement une vue sur l'etat de sante de l'infrastructure serveurs.
-![Monitoring](docs/mockups/monitoring.png)
+
+**Vues reelles du Dashboard en Production :**
+![Dashboard Production 1](docs/mockups/Graphana-Screen1.png)
+![Dashboard Production 2](docs/mockups/Graphana-Screen2.png)
 
 ### 2. Gestion Financiere et Reporting ESG
 Cette fonctionnalite permet aux gestionnaires d'actifs de generer des rapports mensuels, d'analyser les flux de tresorerie et de suivre les indicateurs environnementaux requis pour la conformite extra-financiere.
