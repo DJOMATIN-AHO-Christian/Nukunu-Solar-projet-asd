@@ -36,7 +36,8 @@ services:
 
 networks:
   nukunu-network:
-    external: true
+    driver: bridge
+    name: nukunu-network
 
 volumes:
   prometheus_data:
