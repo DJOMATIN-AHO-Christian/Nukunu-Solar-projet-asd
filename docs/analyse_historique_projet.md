@@ -46,6 +46,12 @@ L'évolution du projet se divise en **4 grandes phases**.
     *   Extraction et intégration de captures d'écran réelles des tableaux de bord Grafana (`docs/mockups/`) pour prouver le bon fonctionnement de la supervision.
     *   Mise à jour du schéma d'architecture du `README.md` pour refléter la nouvelle topologie réseau (Nginx).
 
+## Phase 5 : Gestion des Incidents et FinOps (25 Avril 2026)
+*L'étape ultime du projet a consisté à résoudre des incidents de déploiement complexes et à gérer l'optimisation des coûts (FinOps).*
+
+*   **Incident de Connectivité (SSH/HTTP)** : Suite à la mise en pause de l'instance AWS, l'accès SSH a été bloqué au redémarrage (Timeout) par des règles pare-feu agressives. Résolution : injection d'un script de récupération système (`cloud-config`) via les **User Data d'AWS** pour nettoyer `iptables`, désactiver `fail2ban` et redémarrer `sshd` avant le chargement complet de l'OS.
+*   **Contournement CI/CD (Dépôt Privé)** : Le workflow GitHub Actions échouant lors du `git fetch` (dépôt passé en privé), une opération `scp` sécurisée a été utilisée pour pousser manuellement la configuration Nginx sur le serveur de production, suivi d'un redémarrage à chaud de Docker (`systemctl restart docker`).
+*   **FinOps (Zéro Facturation)** : Afin d'éviter tout surcoût (facturation des IP Élastiques non attachées ou des volumes EBS) d'ici la présentation au jury, la commande `terraform destroy -auto-approve` a été exécutée. Cette décision démontre la puissance de l'**Infrastructure as Code (IaC)** : l'environnement Cloud est détruit pour économiser 100% des coûts, et sera recréé intégralement en 2 minutes le jour J (`terraform apply`).
 ---
 
 > [!NOTE]
