@@ -109,7 +109,7 @@ Le deploiement sur l'infrastructure de production est integralement automatise g
 
 **Acces aux Environnements de Production :**
 - **URL de l'Application** : [http://34.243.44.194](http://34.243.44.194) - Interface utilisateur et API (via Nginx Reverse Proxy).
-- **Interface Monitoring** : [http://34.243.44.194:3000](http://34.243.44.194:3000) - Dashboards de supervision technique.
+- **Interface Monitoring** : [http://34.243.44.194/grafana/](http://34.243.44.194/grafana/) - Dashboards de supervision technique (via Nginx).
 
 **Identifiants pour les Tests (Profil Super Admin) :**
 Pour tester les fonctionnalites d'administration, vous pouvez utiliser les identifiants suivants, pre-configures dans la base de donnees via les scripts de migration :
