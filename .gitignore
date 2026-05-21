@@ -28,3 +28,10 @@ docker/data/
 *.log
 dist/
 tmp/
+
+# Archives & Temporary files
+project.tar.gz
+project.zip
+userdata*.txt
+sg.json
+

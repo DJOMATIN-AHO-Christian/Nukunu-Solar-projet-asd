@@ -1,0 +1,46 @@
+version: '3.8'
+
+# ==============================================================================
+# docker-compose.test.yml
+# Description : Surcharge (override) pour créer un environnement de test isolé.
+#               Conforme au critère BC02-CP5 du jury ASD.
+# Utilisation : docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+# ==============================================================================
+
+services:
+  nukunu-app:
+    # Pour l'environnement de test, on expose le port 3002 directement en local
+    # pour permettre au script 'smoke-test.sh' de vérifier la santé de l'API
+    # sans avoir besoin que le reverse proxy (nginx) soit completement configuré.
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=test
+      - PORT=3002
+      # On pointe délibérément vers une base de données de test éphémère
+      - DB_USER=test_admin
+      - DB_PASSWORD=test_password
+      - DB_NAME=nukunu_test_db
+    depends_on:
+      - nukunu-postgres-test
+
+  nukunu-postgres-test:
+    image: postgres:16-alpine
+    container_name: nukunu-postgres-test
+    environment:
+      - POSTGRES_USER=test_admin
+      - POSTGRES_PASSWORD=test_password
+      - POSTGRES_DB=nukunu_test_db
+    # VOLONTAIREMENT : Pas de volume nommé pour garantir que chaque test
+    # part d'une base vierge (isolation des données).
+    networks:
+      - nukunu-network
+
+  # En test, nous n'avons pas besoin d'activer la stack complète de monitoring
+  # pour valider que le code fonctionnel marche.
+  prometheus:
+    profiles: ["donotstart"]
+  grafana:
+    profiles: ["donotstart"]
+  node-exporter:
+    profiles: ["donotstart"]
